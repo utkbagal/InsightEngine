@@ -1,0 +1,93 @@
+
+
+Goal: Create instant, error-reduced side-by-side comparisons from filings, KPIs, and (optionally) web data.
+Build for
+Data Ingestion: Accept company PDFs/HTML (10-K/10-Q), research notes, and CSV KPIs
+Entity/KPI Alignment: Normalize company names, map metric synonyms (e.g., “Adj. EBITDA”)
+Comparator/Aligner: Line up like-for-like metrics across years/companies
+Report Composer: Generate a structured comparison table and concise highlight callouts
+Web Enricher: Pull 1–2 public metrics if available; cache to avoid rate limits
+Demo expectations: Load 2–3 companies with mixed sources → show a clean comparison table with highlights (e.g., revenue, profit, growth deltas, margin diffs) → export/share as CSV/HTML
+--
+
+Build Architecture
+
+1. Data Ingestion (Input Layer)
+
+Accept:
+
+PDFs/HTML (10-K, 10-Q) → parse via pdfplumber or PyPDF2
+
+CSV uploads with KPIs
+
+Pasted text (research notes)
+
+Normalize into plain text blocks for AI.
+
+Entity/KPI Alignment (Standardizer)
+
+Normalize company names (e.g., “Apple Inc.” → “Apple”).
+
+Synonym mapper for metrics:
+
+Adj. EBITDA → EBITDA
+
+Net Income → Net Profit
+
+Operating Revenue → Revenue
+
+Quick hack: Maintain a dictionary mapping synonyms → standard KPIs in Python.
+
+Comparator / Aligner (Engine)
+
+AI (OpenAI GPT) extracts structured metrics like below:
+
+{
+  "Company": "Apple",
+  "Year": 2023,
+  "Revenue": 394.3,
+  "Net Profit": 99.8,
+  "EBITDA Margin": 32,
+  "Debt": 85.2,
+  "Cash Reserves": 62.1
+}
+
+
+Align by year & KPI → generate side-by-side table.
+
+Report Composer (Frontend Output)
+
+Clean comparison table (Company A vs B vs C).
+
+Highlights section:
+
+“Apple has 25% higher revenue growth vs Microsoft.”
+
+“Amazon’s debt-to-equity ratio is riskier.”
+
+Export as CSV or HTML report.
+
+(Optional) Web Enricher
+
+Pull 1–2 public metrics (market cap, PE ratio) using Yahoo Finance API or AlphaVantage.
+
+Cache results (dict or SQLite) → avoids rate limits.
+
+Landing page:
+
+	2 liner about what is the app about (product info)
+	message that says, "want to get insights and financial comparison of companies using cutting edge technology? Hit 'Start' below."
+	a button that will take user to comparison page
+
+Comparison page:
+
+	has provision to upload financial documents for 2 to 4 companies (in pdf/html format)
+	has provision to enter company names manually or if not entered manually, name should be picked from document uploaded.
+	validates for doc format
+	upon hitting compare button, 
+		documents are analysed for compatibility (whethere data belongs to same year/quarter), whether data is of same nature (financial results etc), if not show error
+		documents are analysed using ai agent for key metrics to be used for comparison. get all key info from documents extacted into json format.
+		comparison results with visuals/graph with animations for loading.
+		enganging highlights.
+		
+	
