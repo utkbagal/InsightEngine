@@ -116,7 +116,7 @@ export class GeminiService {
     });
 
     const prompt = `
-    You are an expert financial analyst. Extract key financial metrics from this quarterly/annual financial document.
+    You are an expert financial analyst. Extract key financial metrics from this financial document, paying special attention to TABLES and structured data.
     
     DOCUMENT CONTEXT DETECTED:
     - Document Type: ${documentContext.type}
@@ -124,36 +124,47 @@ export class GeminiService {
     - Currency: ${documentContext.currency}
     - Period: ${documentContext.period || 'Not detected'}
     
-    SEARCH CAREFULLY for these specific terms and variations:
+    **EXTRACTION STRATEGY FOR TABULAR DATA**:
+    1. FIRST scan for financial tables (Income Statement, Balance Sheet, Cash Flow)
+    2. Look for row headers with financial metrics and corresponding numerical values
+    3. Tables often have format: "Metric Name | Current Period | Previous Period"
+    4. Pay attention to table headers indicating scale (Millions, Thousands, Crores, etc.)
+    5. Extract values from the most recent period column
     
-    **REVENUE** (look for):
-    - "Total revenues", "Net revenues", "Revenue", "Net sales", "Sales", "Total income", "Operating revenues"
-    - May appear in: Income Statement, Consolidated Statement of Operations, Statement of Earnings
+    **SEARCH PATTERNS IN TABLES AND TEXT**:
     
-    **NET INCOME** (look for):
-    - "Net income", "Net earnings", "Profit", "Net profit", "Earnings after tax", "Net income attributable to"
-    - Often the bottom line of income statement
+    **REVENUE** (in tables look for rows with):
+    - "Total revenue", "Net revenue", "Revenue", "Net sales", "Sales", "Total income"
+    - "Operating revenue", "Revenue from operations", "Turnover"
+    - Row may be at top of income statement table
     
-    **ADDITIONAL METRICS FOR RATIO CALCULATIONS** (look for):
-    - "Gross profit", "Operating income/profit", "EBITDA"
-    - "Shareholders' equity", "Book value", "Total equity"
-    - "Shares outstanding", "Weighted average shares"
-    - "Current assets", "Current liabilities"
-    - "Long-term debt", "Short-term debt", "Total debt"
+    **NET INCOME** (in tables look for rows with):
+    - "Net profit", "Net income", "Profit after tax", "PAT"
+    - "Net earnings", "Profit for the period/year"
+    - Usually at bottom of income statement table
     
-    **PERIOD INFORMATION** (look for):
-    - "Three months ended", "Quarter ended", "For the period ended", "Fiscal year ended"
-    - Date formats: "March 31, 2024", "Q1 2024", "FY 2024"
+    **BALANCE SHEET ITEMS** (look for in balance sheet tables):
+    - "Total assets", "Current assets", "Non-current assets"
+    - "Current liabilities", "Non-current liabilities"
+    - "Shareholders' equity", "Total equity", "Net worth"
+    - "Long-term borrowings", "Short-term borrowings", "Total debt"
+    - "Cash and cash equivalents", "Cash and bank balances"
     
-    **CRITICAL INSTRUCTIONS**:
-    1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
-    2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using rate 1 USD = 83 INR)
-    3. If you find "in millions" or "in thousands" in headers, adjust accordingly
-    4. Search the ENTIRE document methodically - check tables, footnotes, summaries
-    5. For quarterly data, extract the specific quarter (Q1, Q2, Q3, Q4)
-    6. Include confidence score (0-1) for each extracted value
-    7. Provide evidence snippet (max 100 chars) showing where you found each value
-    8. If you cannot find a metric, return null (DO NOT fabricate or guess)
+    **OTHER FINANCIAL METRICS** (in various tables):
+    - "Gross profit", "Operating profit/loss", "EBITDA"
+    - "Share capital", "Reserves and surplus"
+    - "Number of shares", "Weighted average shares"
+    
+    **CRITICAL EXTRACTION RULES**:
+    1. **Currency Conversion**: For INR values, convert to USD using rate 1 USD = 83 INR
+    2. **Scale Conversion**: 
+       - If document shows "in Crores" → multiply by 10 to get millions, then divide by 1000 to get billions
+       - If document shows "in Millions" → divide by 1000 to get billions
+       - If document shows "in Thousands" → divide by 1,000,000 to get billions
+    3. **Parentheses**: Numbers in parentheses () typically indicate negative values or losses
+    4. **Confidence**: High confidence (0.9+) for clearly labeled table values, lower for estimated values
+    5. **Evidence**: Capture the exact table row/cell where you found each value
+    6. **NULL policy**: If you cannot find a specific metric, return null - DO NOT guess or fabricate
     
     Return JSON format with confidence and evidence:
     {
@@ -182,14 +193,16 @@ export class GeminiService {
         "overall": number (0-1)
       },
       "evidence": {
-        "revenue": "text snippet showing where revenue was found",
-        "netIncome": "text snippet showing where net income was found"
+        "revenue": "exact table row/cell text where revenue was found",
+        "netIncome": "exact table row/cell text where net income was found",
+        "totalAssets": "exact table row/cell text where total assets was found",
+        "shareholdersEquity": "exact table row/cell text where equity was found"
       },
       "extractionMethod": "ai-only"
     }
     
     Document text:
-    ${text.slice(0, 18000)}
+    ${text.slice(0, 25000)}
     `;
 
     try {
@@ -197,8 +210,8 @@ export class GeminiService {
         model: "gemini-2.0-flash",
         config: {
           responseMimeType: "application/json",
-          temperature: 0.2,
-          maxOutputTokens: 4000
+          temperature: 0.1,
+          maxOutputTokens: 6000
         },
         contents: `You are a financial analyst expert specializing in quarterly earnings reports and financial statements. Your task is to meticulously extract financial metrics from the document. Search thoroughly and convert all values to billions USD.\n\n${prompt}`
       });
@@ -209,7 +222,14 @@ export class GeminiService {
         throw new Error('Empty response from Gemini');
       }
 
-      const aiResult = JSON.parse(jsonText);
+      let aiResult;
+      try {
+        aiResult = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error('Failed to parse Gemini JSON response:', parseError);
+        console.error('Raw response:', jsonText);
+        throw new Error('AI response was not valid JSON format');
+      }
       
       // Step 2: Calculate financial ratios from AI extracted metrics
       const { RatioCalculator } = await import('./ratioCalculator');
