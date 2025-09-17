@@ -74,8 +74,39 @@ export class KPINormalizer {
   }
 
   /**
+   * Calculates fuzzy string similarity using Levenshtein distance
+   */
+  private calculateStringSimilarity(str1: string, str2: string): number {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    
+    if (len1 === 0) return len2 === 0 ? 1 : 0;
+    if (len2 === 0) return 0;
+    
+    const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(null));
+    
+    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+    
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,      // deletion
+          matrix[i][j - 1] + 1,      // insertion
+          matrix[i - 1][j - 1] + cost // substitution
+        );
+      }
+    }
+    
+    const maxLen = Math.max(len1, len2);
+    return (maxLen - matrix[len1][len2]) / maxLen;
+  }
+
+  /**
    * Validates if user-entered company name matches AI-extracted company name
    * Returns validation result with confidence score and normalized names
+   * Updated to be more lenient with typos and use document name as normalized version
    */
   validateCompanyNameMatch(
     userEnteredName: string, 
@@ -96,7 +127,7 @@ export class KPINormalizer {
       return {
         isMatch: true,
         confidence: 1.0,
-        userNormalized,
+        userNormalized: aiNormalized, // Use document name as normalized version
         aiNormalized,
         issues: []
       };
@@ -106,36 +137,42 @@ export class KPINormalizer {
     const userWords = userNormalized.split(/\s+/).filter(w => w.length > 2);
     const aiWords = aiNormalized.split(/\s+/).filter(w => w.length > 2);
     
-    // Calculate word overlap with improved logic
-    const commonWords = userWords.filter(word => aiWords.includes(word));
-    const totalUniqueWords = new Set([...userWords, ...aiWords]).size;
+    // Calculate word overlap with fuzzy matching for typos
+    let exactMatches = 0;
+    let fuzzyMatches = 0;
     
-    // Avoid division by zero and NaN issues
+    for (const userWord of userWords) {
+      let bestMatch = 0;
+      for (const aiWord of aiWords) {
+        if (userWord === aiWord) {
+          exactMatches++;
+          bestMatch = 1;
+          break;
+        } else {
+          const similarity = this.calculateStringSimilarity(userWord, aiWord);
+          if (similarity > 0.7) { // 70% similarity for typos like "motoes" vs "motors"
+            fuzzyMatches++;
+            bestMatch = Math.max(bestMatch, similarity);
+          }
+        }
+      }
+    }
+    
+    const totalMatches = exactMatches + fuzzyMatches;
     const minWords = Math.min(userWords.length, aiWords.length);
-    const overlapRatio = minWords > 0 ? commonWords.length / minWords : 0;
+    const overlapRatio = minWords > 0 ? totalMatches / minWords : 0;
     
     // Ensure ratio is not NaN
     const safeOverlapRatio = isNaN(overlapRatio) ? 0 : overlapRatio;
     
-    // High confidence if significant word overlap (minimum 0.8 threshold)
-    if (safeOverlapRatio >= 0.9) {
+    // More lenient thresholds for typo tolerance
+    if (safeOverlapRatio >= 0.7) { // Lowered from 0.8 to 0.7
       return {
         isMatch: true,
-        confidence: safeOverlapRatio,
-        userNormalized,
+        confidence: Math.min(safeOverlapRatio + 0.1, 1.0), // Boost confidence slightly
+        userNormalized: aiNormalized, // Use document name as normalized version
         aiNormalized,
-        issues: [`Minor name variation detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
-      };
-    }
-    
-    // Medium-high confidence for good matches (raised minimum threshold to 0.8)
-    if (safeOverlapRatio >= 0.8) {
-      return {
-        isMatch: true,
-        confidence: safeOverlapRatio,
-        userNormalized,
-        aiNormalized,
-        issues: [`Acceptable name match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
+        issues: [`Name match with typo tolerance. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
       };
     }
     
@@ -145,33 +182,44 @@ export class KPINormalizer {
       return {
         isMatch: true,
         confidence: hasShortNameMatch.confidence,
-        userNormalized,
+        userNormalized: aiNormalized, // Use document name as normalized version
         aiNormalized,
         issues: [`Short name match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
       };
     }
     
-    // Check for common abbreviations and variations (lowered confidence to meet 0.8 threshold)
+    // Check for common abbreviations and variations with lower threshold
     const isAbbreviationMatch = this.checkAbbreviationMatch(userWords, aiWords);
     if (isAbbreviationMatch) {
       return {
-        isMatch: false, // Below 0.8 threshold, so reject
-        confidence: 0.7,
-        userNormalized,
+        isMatch: true, // Accept abbreviation matches now
+        confidence: 0.75, // Reasonable confidence for abbreviations
+        userNormalized: aiNormalized, // Use document name as normalized version
         aiNormalized,
-        issues: [`Possible abbreviation match detected but below confidence threshold. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
+        issues: [`Abbreviation match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
+      };
+    }
+    
+    // Final check - if user input is substring of document name, accept it
+    if (aiNormalized.includes(userNormalized) || userNormalized.includes(aiNormalized)) {
+      return {
+        isMatch: true,
+        confidence: 0.8,
+        userNormalized: aiNormalized, // Use document name as normalized version
+        aiNormalized,
+        issues: [`Partial name match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
       };
     }
     
     // No match found - all confidence checks failed
     issues.push(`Company name mismatch: User entered "${userEnteredName}" but document contains "${aiExtractedName}"`);
     issues.push('Please verify you uploaded the correct document or check the company name spelling.');
-    issues.push(`Confidence score: ${safeOverlapRatio.toFixed(2)} (minimum required: 0.8)`);
+    issues.push(`Confidence score: ${safeOverlapRatio.toFixed(2)} (minimum required: 0.7)`);
     
     return {
       isMatch: false,
       confidence: safeOverlapRatio,
-      userNormalized,
+      userNormalized: aiNormalized, // Use document name even for failures
       aiNormalized,
       issues
     };
