@@ -61,8 +61,14 @@ export class KPINormalizer {
 
   normalizeCompanyName(name: string): string {
     return name
+      // Split camelCase words (e.g., "TataMotors" → "Tata Motors")
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      // Remove common company suffixes
       .replace(/\b(inc|incorporated|corp|corporation|ltd|limited|llc|co|company)\b\.?/gi, '')
+      // Remove non-alphanumeric characters except spaces
       .replace(/[^\w\s]/g, '')
+      // Clean up extra spaces and normalize
+      .replace(/\s+/g, ' ')
       .trim()
       .toLowerCase();
   }
