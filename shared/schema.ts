@@ -27,14 +27,64 @@ export const financialMetrics = pgTable("financial_metrics", {
   period: text("period").notNull(),
   year: real("year").notNull(),
   quarter: text("quarter"),
+  
+  // Core Financial Metrics (in billions USD)
   revenue: real("revenue"),
   netIncome: real("net_income"),
-  totalAssets: real("total_assets"),
-  cashEquivalents: real("cash_equivalents"),
-  profitMargin: real("profit_margin"),
-  yoyGrowth: real("yoy_growth"),
+  grossProfit: real("gross_profit"),
+  operatingIncome: real("operating_income"),
   ebitda: real("ebitda"),
-  debt: real("debt"),
+  
+  // Balance Sheet Metrics (in billions USD)
+  totalAssets: real("total_assets"),
+  currentAssets: real("current_assets"),
+  currentLiabilities: real("current_liabilities"),
+  totalDebt: real("total_debt"),
+  longTermDebt: real("long_term_debt"),
+  shortTermDebt: real("short_term_debt"),
+  cashEquivalents: real("cash_equivalents"),
+  shareholdersEquity: real("shareholders_equity"),
+  
+  // Share Information
+  sharesOutstanding: real("shares_outstanding"), // in millions
+  
+  // Calculated Basic Metrics (percentages)
+  profitMargin: real("profit_margin"),
+  grossMargin: real("gross_margin"),
+  operatingMargin: real("operating_margin"),
+  yoyGrowth: real("yoy_growth"),
+  
+  // Profitability Ratios (percentages)
+  roe: real("roe"), // Return on Equity
+  roa: real("roa"), // Return on Assets  
+  roic: real("roic"), // Return on Invested Capital
+  
+  // Liquidity Ratios
+  currentRatio: real("current_ratio"),
+  quickRatio: real("quick_ratio"),
+  cashRatio: real("cash_ratio"),
+  
+  // Leverage Ratios
+  debtToEquity: real("debt_to_equity"),
+  debtToAssets: real("debt_to_assets"),
+  interestCoverage: real("interest_coverage"),
+  
+  // Per Share Metrics (USD)
+  eps: real("eps"), // Earnings Per Share
+  bookValuePerShare: real("book_value_per_share"),
+  
+  // Valuation Ratios (requires market data)
+  peRatio: real("pe_ratio"),
+  pbRatio: real("pb_ratio"),
+  marketCap: real("market_cap"), // in billions USD
+  
+  // Data Quality and Sources
+  extractionConfidence: real("extraction_confidence"), // 0-1 score
+  extractionMethod: text("extraction_method"), // 'ai', 'hybrid', 'web'
+  dataSource: text("data_source"), // 'document', 'web', 'calculated'
+  
+  // Legacy fields
+  debt: real("debt"), // Keep for backward compatibility
   rawMetrics: jsonb("raw_metrics"),
   extractedAt: timestamp("extracted_at").default(sql`now()`).notNull(),
 });

@@ -63,8 +63,25 @@ export class GeminiService {
     text: string,
     validatedCompanyName: string
   ): Promise<ExtractedMetrics> {
+    // Step 1: Heuristic pre-extraction using number parser
+    const { NumberParser } = await import('./numberParser');
+    const context = NumberParser.detectDocumentContext(text);
+    const heuristicNumbers = NumberParser.extractFinancialNumbers(text, context);
+
+    console.log(`Heuristic extraction found ${heuristicNumbers.size} metric types with context:`, {
+      scale: context.documentScale,
+      currency: context.currency,
+      period: context.period
+    });
+
     const prompt = `
     You are an expert financial analyst. Extract key financial metrics from this quarterly/annual financial document.
+    
+    DOCUMENT CONTEXT DETECTED:
+    - Scale: ${context.documentScale}
+    - Currency: ${context.currency}
+    - Period: ${context.period || 'Not detected'}
+    - Is Quarterly: ${context.isQuarterly}
     
     SEARCH CAREFULLY for these specific terms and variations:
     
@@ -76,28 +93,28 @@ export class GeminiService {
     - "Net income", "Net earnings", "Profit", "Net profit", "Earnings after tax", "Net income attributable to"
     - Often the bottom line of income statement
     
+    **ADDITIONAL METRICS FOR RATIO CALCULATIONS** (look for):
+    - "Gross profit", "Operating income/profit", "EBITDA"
+    - "Shareholders' equity", "Book value", "Total equity"
+    - "Shares outstanding", "Weighted average shares"
+    - "Current assets", "Current liabilities"
+    - "Long-term debt", "Short-term debt", "Total debt"
+    
     **PERIOD INFORMATION** (look for):
     - "Three months ended", "Quarter ended", "For the period ended", "Fiscal year ended"
     - Date formats: "March 31, 2024", "Q1 2024", "FY 2024"
     
-    **TOTAL ASSETS** (look for):
-    - "Total assets", "Total consolidated assets", Balance sheet totals
-    
-    **CASH & EQUIVALENTS** (look for):
-    - "Cash and cash equivalents", "Cash and short-term investments", "Cash"
-    
-    **DEBT** (look for):
-    - "Total debt", "Long-term debt", "Short-term debt", "Borrowings", "Total borrowings"
-    
-    **IMPORTANT INSTRUCTIONS**:
+    **CRITICAL INSTRUCTIONS**:
     1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
-    2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using approximate rate 1 USD = 83 INR)
+    2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using rate 1 USD = 83 INR)
     3. If you find "in millions" or "in thousands" in headers, adjust accordingly
-    4. Search the ENTIRE document - don't give up if not found immediately
+    4. Search the ENTIRE document methodically - check tables, footnotes, summaries
     5. For quarterly data, extract the specific quarter (Q1, Q2, Q3, Q4)
-    6. Calculate profit margin if revenue and net income are available: (net_income/revenue) * 100
+    6. Include confidence score (0-1) for each extracted value
+    7. Provide evidence snippet (max 100 chars) showing where you found each value
+    8. If you cannot find a metric, return null (DO NOT fabricate or guess)
     
-    Return JSON format:
+    Return JSON format with confidence and evidence:
     {
       "companyName": "${validatedCompanyName}",
       "period": "string (e.g., Q1 2024, FY 2024)",
@@ -105,17 +122,33 @@ export class GeminiService {
       "quarter": "string (Q1, Q2, Q3, Q4) or null for annual",
       "revenue": number (in billions USD),
       "netIncome": number (in billions USD),
+      "grossProfit": number (in billions USD),
+      "operatingIncome": number (in billions USD),
+      "ebitda": number (in billions USD),
       "totalAssets": number (in billions USD),
+      "currentAssets": number (in billions USD),
+      "currentLiabilities": number (in billions USD),
+      "totalDebt": number (in billions USD),
+      "longTermDebt": number (in billions USD),
       "cashEquivalents": number (in billions USD),
+      "shareholdersEquity": number (in billions USD),
+      "sharesOutstanding": number (in millions of shares),
       "profitMargin": number (as percentage),
       "yoyGrowth": number (as percentage),
-      "ebitda": number (in billions USD),
-      "debt": number (in billions USD),
-      "rawMetrics": {"extracted_values": "any additional financial data found"}
+      "confidence": {
+        "revenue": number (0-1),
+        "netIncome": number (0-1),
+        "overall": number (0-1)
+      },
+      "evidence": {
+        "revenue": "text snippet showing where revenue was found",
+        "netIncome": "text snippet showing where net income was found"
+      },
+      "extractionMethod": "hybrid"
     }
     
     Document text:
-    ${text.slice(0, 15000)}
+    ${text.slice(0, 18000)}
     `;
 
     try {
@@ -124,7 +157,7 @@ export class GeminiService {
         config: {
           responseMimeType: "application/json",
           temperature: 0.2,
-          maxOutputTokens: 3000
+          maxOutputTokens: 4000
         },
         contents: `You are a financial analyst expert specializing in quarterly earnings reports and financial statements. Your task is to meticulously extract financial metrics from the document. Search thoroughly and convert all values to billions USD.\n\n${prompt}`
       });
@@ -135,12 +168,34 @@ export class GeminiService {
         throw new Error('Empty response from Gemini');
       }
 
-      const parsedResult = JSON.parse(jsonText);
+      const aiResult = JSON.parse(jsonText);
       
-      // Override with validated company name to prevent bias
-      parsedResult.companyName = validatedCompanyName;
+      // Step 2: Merge heuristic and AI results for improved accuracy
+      const mergedResult = NumberParser.mergeExtractionResults(heuristicNumbers, aiResult);
       
-      return parsedResult as ExtractedMetrics;
+      // Step 3: Calculate financial ratios from extracted metrics
+      const { RatioCalculator } = await import('./ratioCalculator');
+      const calculatedRatios = RatioCalculator.calculateAllRatios(mergedResult);
+      const validatedRatios = RatioCalculator.validateRatios(calculatedRatios);
+      
+      // Step 4: Combine everything with confidence scoring
+      const finalResult = {
+        ...mergedResult,
+        ...validatedRatios,
+        companyName: validatedCompanyName,
+        extractionMethod: 'hybrid',
+        extractionConfidence: RatioCalculator.calculateConfidenceScore(mergedResult, validatedRatios),
+        dataSource: 'document'
+      };
+
+      console.log(`Enhanced extraction completed for ${validatedCompanyName}:`, {
+        aiExtracted: Object.keys(aiResult).length,
+        heuristicExtracted: heuristicNumbers.size,
+        ratiosCalculated: Object.values(validatedRatios).filter(v => v !== null).length,
+        overallConfidence: finalResult.extractionConfidence
+      });
+      
+      return finalResult as ExtractedMetrics;
     } catch (error) {
       console.error('Gemini extraction error:', error);
       throw new Error(
