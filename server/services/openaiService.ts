@@ -1,20 +1,11 @@
 import OpenAI from "openai";
 
-// Using Azure OpenAI Service with custom endpoint
+// Using standard OpenAI API
 const openai = new OpenAI({
   apiKey:
     process.env.OPENAI_API_KEY ||
     process.env.OPENAI_API_KEY_ENV_VAR ||
     "default_key",
-  baseURL:
-    "https://secureapi-aoai-openai.azure.com/openai/deployments/gpt-5mini/chat/completions",
-  defaultQuery: { "api-version": "2024-08-01-preview" },
-  defaultHeaders: {
-    "api-key":
-      process.env.OPENAI_API_KEY ||
-      process.env.OPENAI_API_KEY_ENV_VAR ||
-      "default_key",
-  },
 });
 
 export interface ExtractedMetrics {
@@ -76,7 +67,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5mini",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -133,7 +124,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5mini",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -189,7 +180,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5mini",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -249,7 +240,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5mini",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
