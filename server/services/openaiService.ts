@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { geminiService } from "./geminiService";
 
 // Using standard OpenAI API
 const openai = new OpenAI({
@@ -46,8 +47,78 @@ export interface ComparisonInsights {
 
 export class OpenAIService {
   /**
+   * Detect if an error is a connectivity issue that should trigger Gemini fallback
+   */
+  private isConnectivityError(error: any): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      const stack = error.stack?.toLowerCase() || '';
+      
+      // Check for common connectivity error patterns
+      const connectivityPatterns = [
+        'enotfound',           // DNS resolution failed
+        'connection error',     // General connection error
+        'timeout',             // Request timeout
+        'network error',       // Network issues
+        'connection refused',  // Connection refused
+        'econnreset',         // Connection reset
+        'etimedout',          // Connection timeout
+        'econnrefused',       // Connection refused
+        'eai_again',          // Temporary DNS failure
+        'aborted'             // Request aborted
+      ];
+      
+      const hasConnectivityError = connectivityPatterns.some(pattern => 
+        message.includes(pattern) || stack.includes(pattern)
+      );
+      
+      // Check for OpenAI specific API error codes
+      if (error.constructor.name === 'APIError' || 'status' in error) {
+        const status = (error as any).status;
+        // 408 Request Timeout, 5xx Server Errors indicate connectivity issues
+        if (status === 408 || (status >= 500 && status <= 599)) {
+          return true;
+        }
+      }
+      
+      // Check error codes directly
+      const errorCode = (error as any).code;
+      if (errorCode) {
+        const connectivityCodes = ['ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN'];
+        if (connectivityCodes.includes(errorCode)) {
+          return true;
+        }
+      }
+      
+      return hasConnectivityError;
+    }
+    return false;
+  }
+
+  /**
+   * Sanitize error messages for client consumption
+   */
+  private sanitizeErrorMessage(error: Error, context: string): string {
+    const message = error.message.toLowerCase();
+    
+    // If it's a connectivity error, return a generic message
+    if (this.isConnectivityError(error)) {
+      return 'Analysis service temporarily unavailable. Please try again in a few moments.';
+    }
+    
+    // Remove provider-specific details but keep useful information
+    const sanitized = error.message
+      .replace(/openai|gpt-4|api key|gemini/gi, 'AI service')
+      .replace(/quota exceeded|rate limit/gi, 'service limit reached')
+      .replace(/authentication failed/gi, 'service authentication error');
+    
+    return sanitized || `Failed to complete ${context}`;
+  }
+
+  /**
    * Extract company name from document text without any user input bias
    * This prevents prompt leakage and ensures objective company name extraction
+   * Automatically falls back to Gemini if OpenAI connectivity fails
    */
   async extractCompanyName(text: string): Promise<string | null> {
     const prompt = `
@@ -86,11 +157,30 @@ export class OpenAIService {
       return result && result.toLowerCase() !== 'null' ? result : null;
     } catch (error) {
       console.error('OpenAI company name extraction error:', error);
+      
+      // Fall back to Gemini if it's a connectivity error
+      if (this.isConnectivityError(error)) {
+        console.log('OpenAI connectivity failed, falling back to Gemini for company name extraction');
+        try {
+          return await geminiService.extractCompanyName(text);
+        } catch (geminiError) {
+          console.error('Gemini fallback also failed:', geminiError);
+          throw new Error(
+            this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'company name extraction')
+          );
+        }
+      }
+      
+      // If not a connectivity error, throw sanitized error
       throw new Error(
-        `Failed to extract company name: ${error instanceof Error ? error.message : "Unknown error"}`
+        this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'company name extraction')
       );
     }
   }
+  /**
+   * Extract financial metrics from document text
+   * Automatically falls back to Gemini if OpenAI connectivity fails  
+   */
   async extractFinancialMetrics(
     text: string,
     validatedCompanyName: string
@@ -147,12 +237,31 @@ export class OpenAIService {
       return result as ExtractedMetrics;
     } catch (error) {
       console.error("OpenAI extraction error:", error);
+      
+      // Fall back to Gemini if it's a connectivity error
+      if (this.isConnectivityError(error)) {
+        console.log('OpenAI connectivity failed, falling back to Gemini for metrics extraction');
+        try {
+          return await geminiService.extractFinancialMetrics(text, validatedCompanyName);
+        } catch (geminiError) {
+          console.error('Gemini fallback also failed:', geminiError);
+          throw new Error(
+            this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'financial metrics extraction')
+          );
+        }
+      }
+      
+      // If not a connectivity error, throw sanitized error
       throw new Error(
-        `Failed to extract financial metrics: ${error instanceof Error ? error.message : "Unknown error"}`,
+        this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'financial metrics extraction')
       );
     }
   }
 
+  /**
+   * Validate document compatibility for meaningful comparisons
+   * Automatically falls back to Gemini if OpenAI connectivity fails
+   */
   async validateDocumentCompatibility(
     documents: Array<{ text: string; companyName: string }>,
   ): Promise<DocumentCompatibility[]> {
@@ -162,17 +271,19 @@ export class OpenAIService {
     2. Are the same type of financial document (10-K, 10-Q, annual report, etc.)
     3. Can be meaningfully compared
 
-    Return a JSON array with compatibility analysis for each document:
-    [
-      {
-        "compatible": boolean,
-        "period": "string",
-        "year": number,
-        "quarter": "string or null",
-        "documentType": "string",
-        "issues": ["array of issues if not compatible"]
-      }
-    ]
+    Return a JSON object with compatibility analysis for each document:
+    {
+      "documents": [
+        {
+          "compatible": boolean,
+          "period": "string",
+          "year": number,
+          "quarter": "string or null",
+          "documentType": "string",
+          "issues": ["array of issues if not compatible"]
+        }
+      ]
+    }
 
     Documents:
     ${documents.map((doc, idx) => `Document ${idx + 1} (${doc.companyName}):\n${doc.text.slice(0, 2000)}\n\n`).join("")}
@@ -202,12 +313,31 @@ export class OpenAIService {
       return result.documents || [];
     } catch (error) {
       console.error("OpenAI compatibility check error:", error);
+      
+      // Fall back to Gemini if it's a connectivity error
+      if (this.isConnectivityError(error)) {
+        console.log('OpenAI connectivity failed, falling back to Gemini for document compatibility validation');
+        try {
+          return await geminiService.validateDocumentCompatibility(documents);
+        } catch (geminiError) {
+          console.error('Gemini fallback also failed:', geminiError);
+          throw new Error(
+            this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'document compatibility validation')
+          );
+        }
+      }
+      
+      // If not a connectivity error, throw sanitized error
       throw new Error(
-        `Failed to validate document compatibility: ${error instanceof Error ? error.message : "Unknown error"}`,
+        this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'document compatibility validation')
       );
     }
   }
 
+  /**
+   * Generate actionable insights from financial comparisons
+   * Automatically falls back to Gemini if OpenAI connectivity fails
+   */
   async generateComparisonInsights(
     metrics: ExtractedMetrics[],
   ): Promise<ComparisonInsights> {
@@ -263,8 +393,23 @@ export class OpenAIService {
       return result as ComparisonInsights;
     } catch (error) {
       console.error("OpenAI insights generation error:", error);
+      
+      // Fall back to Gemini if it's a connectivity error
+      if (this.isConnectivityError(error)) {
+        console.log('OpenAI connectivity failed, falling back to Gemini for insights generation');
+        try {
+          return await geminiService.generateComparisonInsights(metrics);
+        } catch (geminiError) {
+          console.error('Gemini fallback also failed:', geminiError);
+          throw new Error(
+            this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'comparison insights generation')
+          );
+        }
+      }
+      
+      // If not a connectivity error, throw sanitized error
       throw new Error(
-        `Failed to generate comparison insights: ${error instanceof Error ? error.message : "Unknown error"}`,
+        this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'comparison insights generation')
       );
     }
   }
