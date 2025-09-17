@@ -250,7 +250,10 @@ export class GeminiService {
       let aiResult;
       try {
         console.log(`Raw Gemini response for ${validatedCompanyName}:`, jsonText);
-        aiResult = JSON.parse(jsonText);
+        const parsed = JSON.parse(jsonText);
+        
+        // Handle case where Gemini returns an array instead of a single object
+        aiResult = Array.isArray(parsed) ? parsed[0] : parsed;
         console.log(`Parsed Gemini result for ${validatedCompanyName}:`, JSON.stringify(aiResult, null, 2));
       } catch (parseError) {
         console.error('Failed to parse Gemini JSON response:', parseError);
