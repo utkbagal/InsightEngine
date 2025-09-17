@@ -81,9 +81,9 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
 
   const getInsightColor = (impact: ComparisonInsight['impact']) => {
     switch (impact) {
-      case 'positive': return 'bg-accent/10 text-accent border-accent/20';
-      case 'negative': return 'bg-destructive/10 text-destructive border-destructive/20';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'positive': return 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700';
+      case 'negative': return 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700';
+      default: return 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700';
     }
   };
 

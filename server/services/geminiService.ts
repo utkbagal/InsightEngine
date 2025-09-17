@@ -11,6 +11,48 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export class GeminiService {
   /**
+   * Analyze document context for enhanced extraction
+   */
+  private analyzeDocumentContext(text: string): {
+    type: string;
+    scale: string;
+    currency: string;
+    period: string | null;
+  } {
+    const textLower = text.toLowerCase();
+    
+    // Detect document type
+    let type = 'unknown';
+    if (textLower.includes('10-k') || textLower.includes('annual report')) type = 'annual';
+    else if (textLower.includes('10-q') || textLower.includes('quarterly')) type = 'quarterly';
+    else if (textLower.includes('earnings')) type = 'earnings';
+    
+    // Detect scale
+    let scale = 'billions';
+    if (textLower.includes('in millions') || textLower.includes('(in millions)')) scale = 'millions';
+    else if (textLower.includes('in thousands') || textLower.includes('(in thousands)')) scale = 'thousands';
+    
+    // Detect currency
+    let currency = 'USD';
+    if (textLower.includes('inr') || textLower.includes('₹') || textLower.includes('rupees')) currency = 'INR';
+    else if (textLower.includes('eur') || textLower.includes('€')) currency = 'EUR';
+    else if (textLower.includes('gbp') || textLower.includes('£')) currency = 'GBP';
+    
+    // Detect period
+    let period = null;
+    const yearMatch = textLower.match(/20\d{2}/);
+    const quarterMatch = textLower.match(/q([1-4])|quarter\s*([1-4])/);
+    if (quarterMatch && yearMatch) {
+      const qNum = quarterMatch[1] || quarterMatch[2];
+      period = `Q${qNum} ${yearMatch[0]}`;
+    } else if (yearMatch) {
+      period = `FY ${yearMatch[0]}`;
+    }
+    
+    return { type, scale, currency, period };
+  }
+
+  /**
    * Sanitize error messages for client consumption
    */
   private sanitizeErrorMessage(error: Error, context: string): string {
@@ -63,25 +105,24 @@ export class GeminiService {
     text: string,
     validatedCompanyName: string
   ): Promise<ExtractedMetrics> {
-    // Step 1: Heuristic pre-extraction using number parser
-    const { NumberParser } = await import('./numberParser');
-    const context = NumberParser.detectDocumentContext(text);
-    const heuristicNumbers = NumberParser.extractFinancialNumbers(text, context);
-
-    console.log(`Heuristic extraction found ${heuristicNumbers.size} metric types with context:`, {
-      scale: context.documentScale,
-      currency: context.currency,
-      period: context.period
+    // Enhanced AI-first extraction - analyze document context first
+    const documentContext = this.analyzeDocumentContext(text);
+    
+    console.log(`Pure AI extraction starting for ${validatedCompanyName} with context:`, {
+      documentType: documentContext.type,
+      scale: documentContext.scale,
+      currency: documentContext.currency,
+      period: documentContext.period
     });
 
     const prompt = `
     You are an expert financial analyst. Extract key financial metrics from this quarterly/annual financial document.
     
     DOCUMENT CONTEXT DETECTED:
-    - Scale: ${context.documentScale}
-    - Currency: ${context.currency}
-    - Period: ${context.period || 'Not detected'}
-    - Is Quarterly: ${context.isQuarterly}
+    - Document Type: ${documentContext.type}
+    - Scale: ${documentContext.scale}
+    - Currency: ${documentContext.currency}
+    - Period: ${documentContext.period || 'Not detected'}
     
     SEARCH CAREFULLY for these specific terms and variations:
     
@@ -144,7 +185,7 @@ export class GeminiService {
         "revenue": "text snippet showing where revenue was found",
         "netIncome": "text snippet showing where net income was found"
       },
-      "extractionMethod": "hybrid"
+      "extractionMethod": "ai-only"
     }
     
     Document text:
@@ -170,27 +211,23 @@ export class GeminiService {
 
       const aiResult = JSON.parse(jsonText);
       
-      // Step 2: Merge heuristic and AI results for improved accuracy
-      const mergedResult = NumberParser.mergeExtractionResults(heuristicNumbers, aiResult);
-      
-      // Step 3: Calculate financial ratios from extracted metrics
+      // Step 2: Calculate financial ratios from AI extracted metrics
       const { RatioCalculator } = await import('./ratioCalculator');
-      const calculatedRatios = RatioCalculator.calculateAllRatios(mergedResult);
+      const calculatedRatios = RatioCalculator.calculateAllRatios(aiResult);
       const validatedRatios = RatioCalculator.validateRatios(calculatedRatios);
       
-      // Step 4: Combine everything with confidence scoring
+      // Step 3: Combine AI results with calculated ratios
       const finalResult = {
-        ...mergedResult,
+        ...aiResult,
         ...validatedRatios,
         companyName: validatedCompanyName,
-        extractionMethod: 'hybrid',
-        extractionConfidence: RatioCalculator.calculateConfidenceScore(mergedResult, validatedRatios),
+        extractionMethod: 'ai-only',
+        extractionConfidence: aiResult.confidence?.overall || 0.8,
         dataSource: 'document'
       };
 
-      console.log(`Enhanced extraction completed for ${validatedCompanyName}:`, {
+      console.log(`Pure AI extraction completed for ${validatedCompanyName}:`, {
         aiExtracted: Object.keys(aiResult).length,
-        heuristicExtracted: heuristicNumbers.size,
         ratiosCalculated: Object.values(validatedRatios).filter(v => v !== null).length,
         overallConfidence: finalResult.extractionConfidence
       });
