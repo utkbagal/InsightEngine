@@ -64,12 +64,43 @@ export class GeminiService {
     validatedCompanyName: string
   ): Promise<ExtractedMetrics> {
     const prompt = `
-    Analyze the following financial document text and extract key financial metrics.
+    You are an expert financial analyst. Extract key financial metrics from this quarterly/annual financial document.
     
-    Return the data in JSON format with the following structure:
+    SEARCH CAREFULLY for these specific terms and variations:
+    
+    **REVENUE** (look for):
+    - "Total revenues", "Net revenues", "Revenue", "Net sales", "Sales", "Total income", "Operating revenues"
+    - May appear in: Income Statement, Consolidated Statement of Operations, Statement of Earnings
+    
+    **NET INCOME** (look for):
+    - "Net income", "Net earnings", "Profit", "Net profit", "Earnings after tax", "Net income attributable to"
+    - Often the bottom line of income statement
+    
+    **PERIOD INFORMATION** (look for):
+    - "Three months ended", "Quarter ended", "For the period ended", "Fiscal year ended"
+    - Date formats: "March 31, 2024", "Q1 2024", "FY 2024"
+    
+    **TOTAL ASSETS** (look for):
+    - "Total assets", "Total consolidated assets", Balance sheet totals
+    
+    **CASH & EQUIVALENTS** (look for):
+    - "Cash and cash equivalents", "Cash and short-term investments", "Cash"
+    
+    **DEBT** (look for):
+    - "Total debt", "Long-term debt", "Short-term debt", "Borrowings", "Total borrowings"
+    
+    **IMPORTANT INSTRUCTIONS**:
+    1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
+    2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using approximate rate 1 USD = 83 INR)
+    3. If you find "in millions" or "in thousands" in headers, adjust accordingly
+    4. Search the ENTIRE document - don't give up if not found immediately
+    5. For quarterly data, extract the specific quarter (Q1, Q2, Q3, Q4)
+    6. Calculate profit margin if revenue and net income are available: (net_income/revenue) * 100
+    
+    Return JSON format:
     {
-      "companyName": "string",
-      "period": "string (e.g., Q1 2023, FY 2023)",
+      "companyName": "${validatedCompanyName}",
+      "period": "string (e.g., Q1 2024, FY 2024)",
       "year": number,
       "quarter": "string (Q1, Q2, Q3, Q4) or null for annual",
       "revenue": number (in billions USD),
@@ -80,14 +111,11 @@ export class GeminiService {
       "yoyGrowth": number (as percentage),
       "ebitda": number (in billions USD),
       "debt": number (in billions USD),
-      "rawMetrics": {}
+      "rawMetrics": {"extracted_values": "any additional financial data found"}
     }
     
-    Extract all monetary values in billions USD. If a metric is not found, use null.
-    Set companyName to the extracted company name from the document.
-    
     Document text:
-    ${text.slice(0, 8000)}
+    ${text.slice(0, 15000)}
     `;
 
     try {
@@ -95,10 +123,10 @@ export class GeminiService {
         model: "gemini-2.0-flash",
         config: {
           responseMimeType: "application/json",
-          temperature: 0.1,
-          maxOutputTokens: 2000
+          temperature: 0.2,
+          maxOutputTokens: 3000
         },
-        contents: `You are a financial analyst expert. Extract financial metrics from documents and return structured JSON data.\n\n${prompt}`
+        contents: `You are a financial analyst expert specializing in quarterly earnings reports and financial statements. Your task is to meticulously extract financial metrics from the document. Search thoroughly and convert all values to billions USD.\n\n${prompt}`
       });
       
       const jsonText = response.text;

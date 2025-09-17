@@ -3,9 +3,11 @@ import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
 import { eq } from "drizzle-orm";
+import ws from "ws";
 
-// Neon configuration for serverless environments
+// Neon configuration for serverless environments  
 neonConfig.fetchConnectionCache = true;
+neonConfig.webSocketConstructor = ws;
 
 export interface IStorage {
   // Companies
