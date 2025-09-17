@@ -2,11 +2,18 @@ import OpenAI from "openai";
 
 // Using Azure OpenAI Service with custom endpoint
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
-  baseURL: "https://secureapi-aoai-openai.azure.com/openai/deployments/gpt-5mini",
+  apiKey:
+    process.env.OPENAI_API_KEY ||
+    process.env.OPENAI_API_KEY_ENV_VAR ||
+    "default_key",
+  baseURL:
+    "https://secureapi-aoai-openai.azure.com/openai/deployments/gpt-5mini/chat/completions",
   defaultQuery: { "api-version": "2024-08-01-preview" },
   defaultHeaders: {
-    "api-key": process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
+    "api-key":
+      process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY_ENV_VAR ||
+      "default_key",
   },
 });
 
@@ -37,20 +44,68 @@ export interface DocumentCompatibility {
 
 export interface ComparisonInsights {
   insights: Array<{
-    type: 'revenue' | 'profitability' | 'growth' | 'risk' | 'efficiency';
+    type: "revenue" | "profitability" | "growth" | "risk" | "efficiency";
     title: string;
     description: string;
-    impact: 'positive' | 'negative' | 'neutral';
+    impact: "positive" | "negative" | "neutral";
     companies: string[];
   }>;
   summary: string;
 }
 
 export class OpenAIService {
-  async extractFinancialMetrics(text: string, companyName?: string): Promise<ExtractedMetrics> {
+  /**
+   * Extract company name from document text without any user input bias
+   * This prevents prompt leakage and ensures objective company name extraction
+   */
+  async extractCompanyName(text: string): Promise<string | null> {
     const prompt = `
-    Analyze the following financial document text and extract key financial metrics. 
-    ${companyName ? `The document is for company: ${companyName}` : ''}
+    Analyze the following financial document text and extract the primary company name.
+    
+    Return ONLY the company name as a simple string, without any additional text or formatting.
+    If no clear company name is found, return null.
+    
+    Focus on:
+    - Company name in headers, titles, or document metadata
+    - Legal entity names (Inc., Corp., LLC, etc.)
+    - Main subject company (not subsidiaries or partners)
+    
+    Document text:
+    ${text.slice(0, 4000)}
+    `;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are a financial analyst expert. Extract company names objectively from financial documents. Return only the company name or null."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 100
+      });
+
+      const result = response.choices[0].message.content?.trim();
+      return result && result.toLowerCase() !== 'null' ? result : null;
+    } catch (error) {
+      console.error('OpenAI company name extraction error:', error);
+      throw new Error(
+        `Failed to extract company name: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+  async extractFinancialMetrics(
+    text: string,
+    validatedCompanyName: string
+  ): Promise<ExtractedMetrics> {
+    const prompt = `
+    Analyze the following financial document text and extract key financial metrics.
     
     Return the data in JSON format with the following structure:
     {
@@ -70,6 +125,7 @@ export class OpenAIService {
     }
     
     Extract all monetary values in billions USD. If a metric is not found, use null.
+    Set companyName to the extracted company name from the document.
     
     Document text:
     ${text.slice(0, 8000)}
@@ -81,27 +137,34 @@ export class OpenAIService {
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst expert. Extract financial metrics from documents and return structured JSON data."
+            content:
+              "You are a financial analyst expert. Extract financial metrics from documents and return structured JSON data.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const result = JSON.parse(response.choices[0].message.content || "{}");
+      // Ensure we use the pre-validated company name to prevent bias
+      result.companyName = validatedCompanyName;
       return result as ExtractedMetrics;
     } catch (error) {
-      console.error('OpenAI extraction error:', error);
-      throw new Error(`Failed to extract financial metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("OpenAI extraction error:", error);
+      throw new Error(
+        `Failed to extract financial metrics: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
-  async validateDocumentCompatibility(documents: Array<{ text: string, companyName: string }>): Promise<DocumentCompatibility[]> {
+  async validateDocumentCompatibility(
+    documents: Array<{ text: string; companyName: string }>,
+  ): Promise<DocumentCompatibility[]> {
     const prompt = `
     Analyze the following financial documents for compatibility. Check if they:
     1. Belong to the same reporting period (year/quarter)
@@ -121,7 +184,7 @@ export class OpenAIService {
     ]
 
     Documents:
-    ${documents.map((doc, idx) => `Document ${idx + 1} (${doc.companyName}):\n${doc.text.slice(0, 2000)}\n\n`).join('')}
+    ${documents.map((doc, idx) => `Document ${idx + 1} (${doc.companyName}):\n${doc.text.slice(0, 2000)}\n\n`).join("")}
     `;
 
     try {
@@ -130,26 +193,33 @@ export class OpenAIService {
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst expert. Analyze document compatibility for financial comparisons."
+            content:
+              "You are a financial analyst expert. Analyze document compatibility for financial comparisons.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.1
+        temperature: 0.1,
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"documents": []}');
+      const result = JSON.parse(
+        response.choices[0].message.content || '{"documents": []}',
+      );
       return result.documents || [];
     } catch (error) {
-      console.error('OpenAI compatibility check error:', error);
-      throw new Error(`Failed to validate document compatibility: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("OpenAI compatibility check error:", error);
+      throw new Error(
+        `Failed to validate document compatibility: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
-  async generateComparisonInsights(metrics: ExtractedMetrics[]): Promise<ComparisonInsights> {
+  async generateComparisonInsights(
+    metrics: ExtractedMetrics[],
+  ): Promise<ComparisonInsights> {
     const prompt = `
     Analyze the following financial metrics from multiple companies and generate key insights for comparison.
     Focus on:
@@ -183,22 +253,28 @@ export class OpenAIService {
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst expert. Generate actionable insights from financial comparisons."
+            content:
+              "You are a financial analyst expert. Generate actionable insights from financial comparisons.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.3
+        temperature: 0.3,
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"insights": [], "summary": ""}');
+      const result = JSON.parse(
+        response.choices[0].message.content ||
+          '{"insights": [], "summary": ""}',
+      );
       return result as ComparisonInsights;
     } catch (error) {
-      console.error('OpenAI insights generation error:', error);
-      throw new Error(`Failed to generate comparison insights: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("OpenAI insights generation error:", error);
+      throw new Error(
+        `Failed to generate comparison insights: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 }

@@ -114,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extract financial metrics from documents
+  // Extract financial metrics from documents with improved validation
   app.post('/api/analyze/metrics', async (req, res) => {
     try {
       const { documentIds } = req.body;
@@ -123,45 +123,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Document IDs required for metrics extraction' });
       }
 
+      const documentValidations = [];
       const extractedMetrics = [];
-
+      const validationErrors = [];
+      
+      // Step 1: Validate all documents first, don't abort on first failure
       for (const docId of documentIds) {
         const doc = await storage.getDocument(docId);
         if (!doc || !doc.extractedText) {
+          documentValidations.push({
+            documentId: docId,
+            isValid: false,
+            error: 'Document not found or not processed',
+            confidence: 0,
+            issues: ['Document not found or extracted text is missing']
+          });
           continue;
         }
 
         const company = await storage.getCompany(doc.companyId);
-        const companyName = company?.name || 'Unknown';
+        const userEnteredName = company?.name || 'Unknown';
 
-        const metrics = await openaiService.extractFinancialMetrics(doc.extractedText, companyName);
-        
-        // Normalize the extracted data
-        const normalizedMetrics = {
-          companyId: doc.companyId,
-          documentId: doc.id,
-          period: metrics.period,
-          year: metrics.year,
-          quarter: metrics.quarter,
-          revenue: kpiNormalizer.normalizeMetricValue(metrics.revenue),
-          netIncome: kpiNormalizer.normalizeMetricValue(metrics.netIncome),
-          totalAssets: kpiNormalizer.normalizeMetricValue(metrics.totalAssets),
-          cashEquivalents: kpiNormalizer.normalizeMetricValue(metrics.cashEquivalents),
-          profitMargin: kpiNormalizer.normalizeMetricValue(metrics.profitMargin),
-          yoyGrowth: kpiNormalizer.normalizeMetricValue(metrics.yoyGrowth),
-          ebitda: kpiNormalizer.normalizeMetricValue(metrics.ebitda),
-          debt: kpiNormalizer.normalizeMetricValue(metrics.debt),
-          rawMetrics: (metrics.rawMetrics as Record<string, any>) || {}
-        };
+        try {
+          // Step 2: Extract company name objectively without user input bias
+          const aiExtractedCompanyName = await openaiService.extractCompanyName(doc.extractedText);
+          
+          if (!aiExtractedCompanyName) {
+            documentValidations.push({
+              documentId: docId,
+              isValid: false,
+              error: 'Could not extract company name from document',
+              confidence: 0,
+              issues: ['No clear company name found in document text'],
+              userEnteredName,
+              extractedCompanyName: null
+            });
+            continue;
+          }
+          
+          // Step 3: Validate company name match with raised 0.8 threshold
+          if (company) {
+            const nameValidation = kpiNormalizer.validateCompanyNameMatch(
+              userEnteredName,
+              aiExtractedCompanyName
+            );
+            
+            const isValid = nameValidation.isMatch && nameValidation.confidence >= 0.8;
+            
+            documentValidations.push({
+              documentId: docId,
+              isValid: isValid,
+              confidence: nameValidation.confidence,
+              issues: nameValidation.issues,
+              userEnteredName,
+              extractedCompanyName: aiExtractedCompanyName,
+              error: isValid ? null : 'Company name validation failed - confidence below 0.8 threshold'
+            });
+            
+            // Step 4: Extract metrics only for valid documents
+            if (isValid) {
+              const metrics = await openaiService.extractFinancialMetrics(doc.extractedText, userEnteredName);
+              
+              // Normalize the extracted data
+              const normalizedMetrics = {
+                companyId: doc.companyId,
+                documentId: doc.id,
+                period: metrics.period,
+                year: metrics.year,
+                quarter: metrics.quarter,
+                revenue: kpiNormalizer.normalizeMetricValue(metrics.revenue),
+                netIncome: kpiNormalizer.normalizeMetricValue(metrics.netIncome),
+                totalAssets: kpiNormalizer.normalizeMetricValue(metrics.totalAssets),
+                cashEquivalents: kpiNormalizer.normalizeMetricValue(metrics.cashEquivalents),
+                profitMargin: kpiNormalizer.normalizeMetricValue(metrics.profitMargin),
+                yoyGrowth: kpiNormalizer.normalizeMetricValue(metrics.yoyGrowth),
+                ebitda: kpiNormalizer.normalizeMetricValue(metrics.ebitda),
+                debt: kpiNormalizer.normalizeMetricValue(metrics.debt),
+                rawMetrics: (metrics.rawMetrics as Record<string, any>) || {}
+              };
 
-        const savedMetrics = await storage.createFinancialMetrics(normalizedMetrics);
-        extractedMetrics.push({
-          ...savedMetrics,
-          companyName: metrics.companyName
-        });
+              const savedMetrics = await storage.createFinancialMetrics(normalizedMetrics);
+              extractedMetrics.push({
+                ...savedMetrics,
+                companyName: userEnteredName,
+                documentId: docId
+              });
+            } else {
+              validationErrors.push({
+                documentId: docId,
+                userEnteredName,
+                extractedCompanyName: aiExtractedCompanyName,
+                confidence: nameValidation.confidence,
+                issues: nameValidation.issues
+              });
+            }
+          } else {
+            documentValidations.push({
+              documentId: docId,
+              isValid: false,
+              error: 'Company not found for document',
+              confidence: 0,
+              issues: ['Associated company record not found'],
+              userEnteredName: 'Unknown',
+              extractedCompanyName: aiExtractedCompanyName
+            });
+          }
+        } catch (docError) {
+          documentValidations.push({
+            documentId: docId,
+            isValid: false,
+            error: docError instanceof Error ? docError.message : 'Unknown processing error',
+            confidence: 0,
+            issues: ['Failed to process document'],
+            userEnteredName,
+            extractedCompanyName: null
+          });
+        }
       }
-
-      res.json({ metrics: extractedMetrics });
+      
+      // Return structured results with detailed validation info
+      const successfulCount = documentValidations.filter(v => v.isValid).length;
+      const totalCount = documentValidations.length;
+      
+      res.json({
+        success: successfulCount > 0,
+        summary: {
+          totalDocuments: totalCount,
+          successfulValidations: successfulCount,
+          failedValidations: totalCount - successfulCount,
+          metricsExtracted: extractedMetrics.length
+        },
+        documentValidations,
+        metrics: extractedMetrics,
+        validationErrors: validationErrors.length > 0 ? validationErrors : null
+      });
     } catch (error) {
       console.error('Metrics extraction error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to extract metrics' });
