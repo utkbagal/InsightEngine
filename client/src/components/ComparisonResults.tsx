@@ -79,12 +79,36 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
     }
   };
 
-  const getInsightColor = (impact: ComparisonInsight['impact']) => {
-    switch (impact) {
-      case 'positive': return 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700';
-      case 'negative': return 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700';
-      default: return 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700';
-    }
+  const getBestPerformingCompany = (metricName: string) => {
+    if (result.metrics.length < 2) return 0;
+    
+    const values = result.metrics.map(m => {
+      switch (metricName.toLowerCase()) {
+        case 'revenue': return m.revenue || 0;
+        case 'net income': case 'netincome': return m.netIncome || 0;
+        case 'profit margin': case 'profitmargin': return m.profitMargin || 0;
+        case 'growth': case 'yoygrowth': return m.yoyGrowth || 0;
+        case 'assets': case 'totalassets': return m.totalAssets || 0;
+        case 'efficiency': return (m.profitMargin || 0) + (m.yoyGrowth || 0); // Combined efficiency score
+        default: return 0;
+      }
+    });
+    
+    return values.indexOf(Math.max(...values));
+  };
+
+  const getInsightColor = (insight: ComparisonInsight) => {
+    // Determine which company performs better for this insight type
+    const bestCompanyIndex = getBestPerformingCompany(insight.type);
+    const companyColor = COLORS[bestCompanyIndex % COLORS.length];
+    const lightColor = LIGHT_COLORS[bestCompanyIndex % LIGHT_COLORS.length];
+    
+    // Use the best performing company's color scheme
+    return {
+      backgroundColor: lightColor,
+      borderColor: companyColor,
+      color: 'hsl(var(--foreground))'
+    };
   };
 
   const formatCurrency = (value?: number | null) => {
@@ -106,6 +130,84 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
     };
   };
 
+  const renderDirectComparison = () => {
+    if (result.metrics.length !== 2) return null;
+    
+    const [company1, company2] = result.metrics;
+    const metrics = [
+      { key: 'revenue', label: 'Revenue', format: formatCurrency },
+      { key: 'netIncome', label: 'Net Income', format: formatCurrency },
+      { key: 'profitMargin', label: 'Profit Margin', format: formatPercent },
+      { key: 'yoyGrowth', label: 'YoY Growth', format: formatPercent }
+    ];
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="mb-8"
+      >
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-center text-xl">Direct Comparison</CardTitle>
+            <p className="text-center text-muted-foreground">Side-by-side key metrics</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {metrics.map((metric, index) => {
+                const value1 = company1[metric.key as keyof typeof company1] as number;
+                const value2 = company2[metric.key as keyof typeof company2] as number;
+                const isBetter1 = (value1 || 0) > (value2 || 0);
+                const isBetter2 = (value2 || 0) > (value1 || 0);
+                
+                return (
+                  <motion.div
+                    key={metric.key}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    className="text-center"
+                  >
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">{metric.label}</h4>
+                    <div className="space-y-2">
+                      <div 
+                        className="p-3 rounded-lg border-2 transition-all"
+                        style={{
+                          borderColor: isBetter1 ? COLORS[0] : 'hsl(var(--border))',
+                          backgroundColor: isBetter1 ? LIGHT_COLORS[0] : 'hsl(var(--muted))'
+                        }}
+                      >
+                        <div className="flex items-center justify-center mb-1">
+                          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: COLORS[0] }} />
+                          <span className="text-xs text-muted-foreground">{company1.companyName}</span>
+                        </div>
+                        <div className="text-lg font-semibold">{metric.format(value1)}</div>
+                      </div>
+                      <div 
+                        className="p-3 rounded-lg border-2 transition-all"
+                        style={{
+                          borderColor: isBetter2 ? COLORS[1] : 'hsl(var(--border))',
+                          backgroundColor: isBetter2 ? LIGHT_COLORS[1] : 'hsl(var(--muted))'
+                        }}
+                      >
+                        <div className="flex items-center justify-center mb-1">
+                          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: COLORS[1] }} />
+                          <span className="text-xs text-muted-foreground">{company2.companyName}</span>
+                        </div>
+                        <div className="text-lg font-semibold">{metric.format(value2)}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="fade-in">
       {/* Results Header */}
@@ -123,6 +225,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
           </Button>
         </div>
       </div>
+
+      {/* Key Visual Comparisons First */}
+      {renderDirectComparison()}
+      
+      {/* Enhanced Visual Comparison - moved up */}
+      <EnhancedVisualComparison metrics={result.metrics} />
 
       {/* Company Overview Cards with Animations */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -235,19 +343,25 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                     transition={{ duration: 0.4, delay: index * 0.1 + 0.4 }}
                     whileHover={{ scale: 1.05, y: -2 }}
                   >
-                    <Card className={`border transition-all duration-300 ${getInsightColor(insight.impact)}`} data-testid={`card-insight-${index}`}>
+                    <Card 
+                      className="border-2 transition-all duration-300" 
+                      style={{
+                        backgroundColor: getInsightColor(insight).backgroundColor,
+                        borderColor: getInsightColor(insight).borderColor,
+                        color: getInsightColor(insight).color
+                      }}
+                      data-testid={`card-insight-${index}`}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start space-x-3">
                           <motion.div 
                             initial={{ scale: 0, rotate: -90 }}
                             animate={{ scale: 1, rotate: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.1 + 0.5 }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              insight.impact === 'positive' ? 'bg-accent/10' :
-                              insight.impact === 'negative' ? 'bg-destructive/10' : 'bg-muted'
-                            }`}
+                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: getInsightColor(insight).borderColor + '20' }}
                           >
-                            <IconComponent className="h-4 w-4" />
+                            <IconComponent className="h-4 w-4" style={{ color: getInsightColor(insight).borderColor }} />
                           </motion.div>
                           <div>
                             <motion.p 
@@ -262,7 +376,7 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.3, delay: index * 0.1 + 0.7 }}
-                              className="text-xs text-current/80"
+                              className="text-xs opacity-80"
                             >
                               {insight.description}
                             </motion.p>
@@ -439,9 +553,6 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
           </table>
         </div>
       </Card>
-
-      {/* Enhanced Visual Comparison */}
-      <EnhancedVisualComparison metrics={result.metrics} />
 
       {/* Action Buttons */}
       <div className="text-center">
