@@ -1,5 +1,11 @@
-import { type Company, type Document, type FinancialMetrics, type Comparison, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison } from "@shared/schema";
+import { type Company, type Document, type FinancialMetrics, type Comparison, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison, companies, documents, financialMetrics, comparisons } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { neonConfig, Pool } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
+
+// Neon configuration for serverless environments
+neonConfig.fetchConnectionCache = true;
 
 export interface IStorage {
   // Companies
@@ -133,4 +139,119 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+class DatabaseStorage implements IStorage {
+  private db;
+
+  constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is not set");
+    }
+    
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    this.db = drizzle(pool);
+  }
+
+  async createCompany(insertCompany: InsertCompany & { normalizedName: string }): Promise<Company> {
+    const [company] = await this.db
+      .insert(companies)
+      .values(insertCompany)
+      .returning();
+    return company;
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const [company] = await this.db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
+    return company;
+  }
+
+  async getCompanyByName(name: string): Promise<Company | undefined> {
+    const [company] = await this.db
+      .select()
+      .from(companies)
+      .where(eq(companies.name, name))
+      .limit(1);
+    return company;
+  }
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const [document] = await this.db
+      .insert(documents)
+      .values(insertDocument)
+      .returning();
+    return document;
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [document] = await this.db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    return document;
+  }
+
+  async getDocumentsByCompany(companyId: string): Promise<Document[]> {
+    return await this.db
+      .select()
+      .from(documents)
+      .where(eq(documents.companyId, companyId));
+  }
+
+  async updateDocumentProcessed(id: string, extractedText: string): Promise<void> {
+    await this.db
+      .update(documents)
+      .set({ 
+        extractedText, 
+        processed: true 
+      })
+      .where(eq(documents.id, id));
+  }
+
+  async createFinancialMetrics(insertMetrics: InsertFinancialMetrics): Promise<FinancialMetrics> {
+    const [metrics] = await this.db
+      .insert(financialMetrics)
+      .values(insertMetrics)
+      .returning();
+    return metrics;
+  }
+
+  async getMetricsByCompany(companyId: string): Promise<FinancialMetrics[]> {
+    return await this.db
+      .select()
+      .from(financialMetrics)
+      .where(eq(financialMetrics.companyId, companyId));
+  }
+
+  async getMetricsByDocument(documentId: string): Promise<FinancialMetrics | undefined> {
+    const [metrics] = await this.db
+      .select()
+      .from(financialMetrics)
+      .where(eq(financialMetrics.documentId, documentId))
+      .limit(1);
+    return metrics;
+  }
+
+  async createComparison(insertComparison: InsertComparison): Promise<Comparison> {
+    const [comparison] = await this.db
+      .insert(comparisons)
+      .values(insertComparison)
+      .returning();
+    return comparison;
+  }
+
+  async getComparison(id: string): Promise<Comparison | undefined> {
+    const [comparison] = await this.db
+      .select()
+      .from(comparisons)
+      .where(eq(comparisons.id, id))
+      .limit(1);
+    return comparison;
+  }
+}
+
+// Use DatabaseStorage for persistent data storage
+export const storage = new DatabaseStorage();
