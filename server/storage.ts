@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 
 export interface IStorage {
   // Companies
-  createCompany(company: InsertCompany): Promise<Company>;
+  createCompany(company: InsertCompany & { normalizedName: string }): Promise<Company>;
   getCompany(id: string): Promise<Company | undefined>;
   getCompanyByName(name: string): Promise<Company | undefined>;
   
@@ -29,7 +29,7 @@ export class MemStorage implements IStorage {
   private financialMetrics: Map<string, FinancialMetrics> = new Map();
   private comparisons: Map<string, Comparison> = new Map();
 
-  async createCompany(insertCompany: InsertCompany): Promise<Company> {
+  async createCompany(insertCompany: InsertCompany & { normalizedName: string }): Promise<Company> {
     const id = randomUUID();
     const company: Company = {
       ...insertCompany,

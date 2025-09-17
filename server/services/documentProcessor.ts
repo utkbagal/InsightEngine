@@ -24,11 +24,23 @@ export class DocumentProcessor {
 
   private async extractFromPDF(buffer: Buffer): Promise<string> {
     try {
+      console.log('Processing PDF buffer of size:', buffer.length);
+      
       // Dynamic import to avoid startup issues with pdf-parse
-      const PDFParse = await import('pdf-parse');
-      const data = await PDFParse.default(buffer);
+      const PDFParse = await import('pdf-parse-debugging-disabled');
+      
+      // Ensure we're passing the buffer correctly
+      const pdfParser = PDFParse.default || PDFParse;
+      
+      if (typeof pdfParser !== 'function') {
+        throw new Error('pdf-parse module not loaded correctly');
+      }
+      
+      const data = await pdfParser(buffer);
+      console.log('PDF parsing successful, extracted text length:', data.text.length);
       return data.text;
     } catch (error) {
+      console.error('PDF parsing detailed error:', error);
       throw new Error(`PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
