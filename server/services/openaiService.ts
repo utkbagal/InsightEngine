@@ -1,8 +1,13 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key" 
+// Using Azure OpenAI Service with custom endpoint
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
+  baseURL: "https://secureapi-aoai-openai.azure.com/openai/deployments/gpt-5mini",
+  defaultQuery: { "api-version": "2024-08-01-preview" },
+  defaultHeaders: {
+    "api-key": process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
+  },
 });
 
 export interface ExtractedMetrics {
@@ -72,7 +77,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-5mini",
         messages: [
           {
             role: "system",
@@ -121,7 +126,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-5mini",
         messages: [
           {
             role: "system",
@@ -174,7 +179,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-5mini",
         messages: [
           {
             role: "system",
