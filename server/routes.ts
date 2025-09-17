@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { storage } from "./storage";
 import { openaiService } from "./services/openaiService";
+import { geminiService } from "./services/geminiService";
 import { documentProcessor } from "./services/documentProcessor";
 import { kpiNormalizer } from "./services/kpiNormalizer";
 import { webEnrichmentService, type EnrichedMetrics } from "./services/webEnrichmentService";
@@ -93,11 +94,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileType
       });
 
-      // Extract text from document
+      // Use direct document analysis instead of text extraction
+      console.log(`Processing ${fileType} document with direct AI analysis`);
+      
+      // For backward compatibility, still extract text as fallback
       const extractedText = await documentProcessor.extractTextFromBuffer(file.buffer, fileType);
       
-      // Update document with extracted text
+      // Update document with extracted text (for fallback compatibility)
       await storage.updateDocumentProcessed(document.id, extractedText);
+      
+      // Store the document buffer for AI analysis (in memory for this session)
+      if (!(global as any).documentBuffers) {
+        (global as any).documentBuffers = new Map();
+      }
+      (global as any).documentBuffers.set(document.id, {
+        buffer: file.buffer,
+        mimeType: file.mimetype,
+        fileType: fileType
+      });
 
       res.json({ document: { ...document, extractedText } });
     } catch (error) {
@@ -246,7 +260,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Step 4: Extract metrics only for valid documents
             if (isValid) {
-              const metrics = await openaiService.extractFinancialMetrics(doc.extractedText, userEnteredName);
+              // Try to use document buffer first, fallback to text extraction
+              const documentBuffers = (global as any).documentBuffers;
+              let metrics;
+              
+              if (documentBuffers && documentBuffers.has(docId)) {
+                // Try direct document analysis first
+                const docData = documentBuffers.get(docId);
+                console.log(`Attempting direct document analysis for ${userEnteredName} with ${docData.mimeType}`);
+                
+                try {
+                  metrics = await geminiService.extractFinancialMetricsFromDocument(
+                    docData.buffer, 
+                    docData.mimeType, 
+                    userEnteredName
+                  );
+                  console.log(`Direct document analysis successful for ${userEnteredName}`);
+                } catch (docError) {
+                  console.error(`Direct document analysis failed for ${userEnteredName}:`, docError);
+                  console.log(`Falling back to text extraction for ${userEnteredName}`);
+                  metrics = await openaiService.extractFinancialMetrics(doc.extractedText, userEnteredName);
+                }
+              } else {
+                // Fallback to text-based extraction
+                console.log(`No document buffer available for ${userEnteredName}, using text extraction`);
+                metrics = await openaiService.extractFinancialMetrics(doc.extractedText, userEnteredName);
+              }
               
               // Normalize the extracted data
               const normalizedMetrics = {

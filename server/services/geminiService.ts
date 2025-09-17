@@ -101,28 +101,25 @@ export class GeminiService {
     }
   }
 
+  // Keep the original method for backward compatibility
   async extractFinancialMetrics(
     text: string,
     validatedCompanyName: string
   ): Promise<ExtractedMetrics> {
-    // Enhanced AI-first extraction - analyze document context first
-    const documentContext = this.analyzeDocumentContext(text);
-    
-    console.log(`Pure AI extraction starting for ${validatedCompanyName} with context:`, {
-      documentType: documentContext.type,
-      scale: documentContext.scale,
-      currency: documentContext.currency,
-      period: documentContext.period
-    });
+    // This method is deprecated but kept for compatibility
+    // In practice, we should use extractFinancialMetricsFromDocument
+    throw new Error('Text-based extraction deprecated. Use extractFinancialMetricsFromDocument instead.');
+  }
+
+  async extractFinancialMetricsFromDocument(
+    documentBuffer: Buffer,
+    mimeType: string,
+    validatedCompanyName: string
+  ): Promise<ExtractedMetrics> {
+    console.log(`Direct document analysis starting for ${validatedCompanyName} with ${mimeType} document`);
 
     const prompt = `
-    You are an expert financial analyst. Extract key financial metrics from this financial document, paying special attention to TABLES and structured data.
-    
-    DOCUMENT CONTEXT DETECTED:
-    - Document Type: ${documentContext.type}
-    - Scale: ${documentContext.scale}
-    - Currency: ${documentContext.currency}
-    - Period: ${documentContext.period || 'Not detected'}
+    You are an expert financial analyst. Analyze this ${mimeType} financial document and extract key financial metrics, paying special attention to TABLES and structured data.
     
     **EXTRACTION STRATEGY FOR TABULAR DATA**:
     1. FIRST scan for financial tables (Income Statement, Balance Sheet, Cash Flow)
@@ -201,11 +198,27 @@ export class GeminiService {
       "extractionMethod": "ai-only"
     }
     
-    Document text:
-    ${text.slice(0, 25000)}
+    Please analyze the uploaded document and extract all available financial metrics.
     `;
 
     try {
+      const contents = [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: documentBuffer.toString("base64"),
+                mimeType: mimeType,
+              },
+            },
+            {
+              text: `You are a financial analyst expert specializing in quarterly earnings reports and financial statements. Your task is to meticulously extract financial metrics from the document. Search thoroughly and convert all values to billions USD.\n\n${prompt}`
+            }
+          ]
+        }
+      ];
+
       const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",
         config: {
@@ -213,7 +226,7 @@ export class GeminiService {
           temperature: 0.1,
           maxOutputTokens: 6000
         },
-        contents: `You are a financial analyst expert specializing in quarterly earnings reports and financial statements. Your task is to meticulously extract financial metrics from the document. Search thoroughly and convert all values to billions USD.\n\n${prompt}`
+        contents: contents
       });
       
       const jsonText = response.text;
