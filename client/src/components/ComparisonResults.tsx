@@ -17,6 +17,23 @@ import {
 import { api, type ComparisonResult, type ComparisonInsight } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
+// Company color arrays for consistent visual identification
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
+const LIGHT_COLORS = [
+  'rgba(136, 132, 216, 0.15)', // Light purple-blue
+  'rgba(130, 202, 157, 0.15)', // Light green  
+  'rgba(255, 198, 88, 0.15)',  // Light orange
+  'rgba(255, 124, 124, 0.15)', // Light red
+  'rgba(141, 209, 225, 0.15)'  // Light cyan
+];
+const MEDIUM_COLORS = [
+  'rgba(136, 132, 216, 0.25)', 
+  'rgba(130, 202, 157, 0.25)', 
+  'rgba(255, 198, 88, 0.25)',  
+  'rgba(255, 124, 124, 0.25)', 
+  'rgba(141, 209, 225, 0.25)'  
+];
+
 interface ComparisonResultsProps {
   result: ComparisonResult;
   onNewComparison: () => void;
@@ -117,16 +134,31 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
             transition={{ duration: 0.5, delay: index * 0.1 }}
             whileHover={{ scale: 1.02, y: -5 }}
           >
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300" data-testid={`card-company-overview-${index}`}>
+            <Card 
+              className="shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4" 
+              style={{ borderLeftColor: COLORS[index % COLORS.length] }}
+              data-testid={`card-company-overview-${index}`}
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{metric.companyName}</CardTitle>
+                  <CardTitle className="text-lg flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    {metric.companyName}
+                  </CardTitle>
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.3, delay: index * 0.1 + 0.2 }}
                   >
-                    <Badge variant="secondary">Analyzed</Badge>
+                    <Badge 
+                      variant="secondary" 
+                      style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length], color: 'hsl(var(--foreground))' }}
+                    >
+                      Analyzed
+                    </Badge>
                   </motion.div>
                 </div>
               </CardHeader>
@@ -258,8 +290,18 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr>
                 <th className="text-left p-4 font-medium text-foreground">Metric</th>
                 {result.metrics.map((metric, index) => (
-                  <th key={index} className="text-right p-4 font-medium text-foreground">
-                    {metric.companyName}
+                  <th 
+                    key={index} 
+                    className="text-right p-4 font-medium text-foreground"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                  >
+                    <div className="flex items-center justify-end">
+                      <div 
+                        className="w-2 h-2 rounded-full mr-2" 
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      {metric.companyName}
+                    </div>
                   </th>
                 ))}
                 {result.metrics.length === 2 && (
@@ -271,7 +313,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr className="hover:bg-muted/30">
                 <td className="p-4 font-medium text-foreground">Revenue (USD Billions)</td>
                 {result.metrics.map((metric, index) => (
-                  <td key={index} className="p-4 text-right font-mono">
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-revenue-${index}`}
+                  >
                     {formatCurrency(metric.revenue)}
                   </td>
                 ))}
@@ -291,7 +338,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr className="hover:bg-muted/30">
                 <td className="p-4 font-medium text-foreground">Net Income (USD Billions)</td>
                 {result.metrics.map((metric, index) => (
-                  <td key={index} className="p-4 text-right font-mono">
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-netincome-${index}`}
+                  >
                     {formatCurrency(metric.netIncome)}
                   </td>
                 ))}
@@ -311,7 +363,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr className="hover:bg-muted/30">
                 <td className="p-4 font-medium text-foreground">Profit Margin (%)</td>
                 {result.metrics.map((metric, index) => (
-                  <td key={index} className="p-4 text-right font-mono">
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-profitmargin-${index}`}
+                  >
                     {formatPercent(metric.profitMargin)}
                   </td>
                 ))}
@@ -331,7 +388,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr className="hover:bg-muted/30">
                 <td className="p-4 font-medium text-foreground">Total Assets (USD Billions)</td>
                 {result.metrics.map((metric, index) => (
-                  <td key={index} className="p-4 text-right font-mono">
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-totalassets-${index}`}
+                  >
                     {formatCurrency(metric.totalAssets)}
                   </td>
                 ))}
@@ -351,7 +413,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               <tr className="hover:bg-muted/30">
                 <td className="p-4 font-medium text-foreground">YoY Revenue Growth (%)</td>
                 {result.metrics.map((metric, index) => (
-                  <td key={index} className="p-4 text-right font-mono">
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-yoygrowth-${index}`}
+                  >
                     {formatPercent(metric.yoyGrowth)}
                   </td>
                 ))}

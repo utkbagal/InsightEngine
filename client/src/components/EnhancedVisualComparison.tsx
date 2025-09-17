@@ -96,6 +96,24 @@ type ChartType = 'bar' | 'line' | 'pie' | 'radar' | 'metric-cards' | 'profitabil
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
+// Light background colors for company identification in text-based displays
+const LIGHT_COLORS = [
+  'rgba(136, 132, 216, 0.15)', // Light purple-blue
+  'rgba(130, 202, 157, 0.15)', // Light green  
+  'rgba(255, 198, 88, 0.15)',  // Light orange
+  'rgba(255, 124, 124, 0.15)', // Light red
+  'rgba(141, 209, 225, 0.15)'  // Light cyan
+];
+
+// Medium colors for better contrast when needed
+const MEDIUM_COLORS = [
+  'rgba(136, 132, 216, 0.25)', 
+  'rgba(130, 202, 157, 0.25)', 
+  'rgba(255, 198, 88, 0.25)',  
+  'rgba(255, 124, 124, 0.25)', 
+  'rgba(141, 209, 225, 0.25)'  
+];
+
 export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComparisonProps) {
   const [activeChart, setActiveChart] = useState<ChartType>('bar');
 
@@ -105,6 +123,8 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
       name: metric.companyName.length > 8 ? metric.companyName.substring(0, 8) + '...' : metric.companyName,
       fullName: metric.companyName,
       color: COLORS[index % COLORS.length],
+      lightColor: LIGHT_COLORS[index % LIGHT_COLORS.length],
+      mediumColor: MEDIUM_COLORS[index % MEDIUM_COLORS.length],
       // Spread all metric data to ensure new ratios are available
       ...metric
     }));
@@ -389,7 +409,13 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                   className="flex justify-between items-center"
                 >
                   <span className="text-sm text-muted-foreground">Revenue</span>
-                  <Badge variant="secondary">{formatCurrency(company.revenue)}</Badge>
+                  <Badge 
+                    variant="secondary" 
+                    style={{ backgroundColor: company.lightColor, color: 'hsl(var(--foreground))' }}
+                    data-testid={`badge-revenue-${index}`}
+                  >
+                    {formatCurrency(company.revenue)}
+                  </Badge>
                 </motion.div>
                 <motion.div 
                   initial={{ width: 0 }}
@@ -398,7 +424,13 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                   className="flex justify-between items-center"
                 >
                   <span className="text-sm text-muted-foreground">Net Income</span>
-                  <Badge variant="secondary">{formatCurrency(company.netIncome)}</Badge>
+                  <Badge 
+                    variant="secondary" 
+                    style={{ backgroundColor: company.lightColor, color: 'hsl(var(--foreground))' }}
+                    data-testid={`badge-netincome-${index}`}
+                  >
+                    {formatCurrency(company.netIncome)}
+                  </Badge>
                 </motion.div>
                 <motion.div 
                   initial={{ width: 0 }}
@@ -408,7 +440,12 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                 >
                   <span className="text-sm text-muted-foreground">Profit Margin</span>
                   <Badge 
-                    variant={(company.profitMargin && company.profitMargin > 10) ? "default" : "secondary"}
+                    variant="secondary"
+                    style={{ 
+                      backgroundColor: (company.profitMargin && company.profitMargin > 10) ? company.mediumColor : company.lightColor, 
+                      color: 'hsl(var(--foreground))' 
+                    }}
+                    data-testid={`badge-profitmargin-${index}`}
                   >
                     {formatPercent(company.profitMargin)}
                   </Badge>
@@ -421,8 +458,13 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                 >
                   <span className="text-sm text-muted-foreground">YoY Growth</span>
                   <Badge 
-                    variant={company.yoyGrowth === null || company.yoyGrowth === undefined ? "secondary" : 
-                            (company.yoyGrowth > 0) ? "default" : "destructive"}
+                    variant="secondary"
+                    style={{ 
+                      backgroundColor: company.yoyGrowth === null || company.yoyGrowth === undefined ? company.lightColor : 
+                                     (company.yoyGrowth > 0) ? company.mediumColor : company.lightColor,
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    data-testid={`badge-yoygrowth-${index}`}
                   >
                     {formatPercent(company.yoyGrowth)}
                   </Badge>
