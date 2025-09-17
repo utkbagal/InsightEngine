@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { motion } from "framer-motion";
+import EnhancedVisualComparison from "@/components/EnhancedVisualComparison";
 import { 
   Download, 
   Share, 
@@ -105,70 +107,144 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
         </div>
       </div>
 
-      {/* Company Overview Cards */}
+      {/* Company Overview Cards with Animations */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {result.metrics.map((metric, index) => (
-          <Card key={index} className="shadow-sm" data-testid={`card-company-overview-${index}`}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{metric.companyName}</CardTitle>
-                <Badge variant="secondary">Analyzed</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Period</span>
-                  <span className="text-sm font-medium">{metric.period}</span>
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+            whileHover={{ scale: 1.02, y: -5 }}
+          >
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300" data-testid={`card-company-overview-${index}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{metric.companyName}</CardTitle>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 + 0.2 }}
+                  >
+                    <Badge variant="secondary">Analyzed</Badge>
+                  </motion.div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Revenue</span>
-                  <span className="text-sm font-medium">{formatCurrency(metric.revenue)}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 + 0.3 }}
+                    className="flex justify-between"
+                  >
+                    <span className="text-sm text-muted-foreground">Period</span>
+                    <span className="text-sm font-medium">{metric.period}</span>
+                  </motion.div>
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 + 0.4 }}
+                    className="flex justify-between"
+                  >
+                    <span className="text-sm text-muted-foreground">Revenue</span>
+                    <span className="text-sm font-medium">{formatCurrency(metric.revenue)}</span>
+                  </motion.div>
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 + 0.5 }}
+                    className="flex justify-between"
+                  >
+                    <span className="text-sm text-muted-foreground">Net Income</span>
+                    <span className="text-sm font-medium text-accent">{formatCurrency(metric.netIncome)}</span>
+                  </motion.div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Net Income</span>
-                  <span className="text-sm font-medium text-accent">{formatCurrency(metric.netIncome)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
 
-      {/* Key Insights Panel */}
-      <Card className="bg-gradient-to-r from-primary/5 to-accent/5 mb-8 shadow-sm" data-testid="card-insights-panel">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Lightbulb className="mr-2 h-5 w-5 text-accent" />
-            Key Insights
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            {result.insights.insights.map((insight, index) => {
-              const IconComponent = getInsightIcon(insight.type);
-              return (
-                <Card key={index} className={`border ${getInsightColor(insight.impact)}`} data-testid={`card-insight-${index}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        insight.impact === 'positive' ? 'bg-accent/10' :
-                        insight.impact === 'negative' ? 'bg-destructive/10' : 'bg-muted'
-                      }`}>
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-1">{insight.title}</p>
-                        <p className="text-xs text-current/80">{insight.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Key Insights Panel with Animations */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Card className="bg-gradient-to-r from-primary/5 to-accent/5 mb-8 shadow-lg" data-testid="card-insights-panel">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <motion.div
+                initial={{ rotate: -180, scale: 0 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Lightbulb className="mr-2 h-5 w-5 text-accent" />
+              </motion.div>
+              <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                Key Insights
+              </motion.span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              {result.insights.insights.map((insight, index) => {
+                const IconComponent = getInsightIcon(insight.type);
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 + 0.4 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                  >
+                    <Card className={`border transition-all duration-300 ${getInsightColor(insight.impact)}`} data-testid={`card-insight-${index}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start space-x-3">
+                          <motion.div 
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 + 0.5 }}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              insight.impact === 'positive' ? 'bg-accent/10' :
+                              insight.impact === 'negative' ? 'bg-destructive/10' : 'bg-muted'
+                            }`}
+                          >
+                            <IconComponent className="h-4 w-4" />
+                          </motion.div>
+                          <div>
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.3, delay: index * 0.1 + 0.6 }}
+                              className="text-sm font-medium mb-1"
+                            >
+                              {insight.title}
+                            </motion.p>
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.3, delay: index * 0.1 + 0.7 }}
+                              className="text-xs text-current/80"
+                            >
+                              {insight.description}
+                            </motion.p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Comparison Table */}
       <Card className="shadow-sm overflow-hidden mb-8" data-testid="card-comparison-table">
@@ -297,63 +373,8 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
         </div>
       </Card>
 
-      {/* Chart Visualization */}
-      <Card className="shadow-sm mb-8" data-testid="card-visual-comparison">
-        <CardHeader>
-          <CardTitle>Visual Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Revenue Comparison */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Revenue Comparison (USD Billions)
-              </h4>
-              <div className="space-y-3">
-                {result.metrics.map((metric, index) => {
-                  const maxRevenue = Math.max(...result.metrics.map(m => m.revenue || 0));
-                  const percentage = maxRevenue > 0 ? ((metric.revenue || 0) / maxRevenue) * 100 : 0;
-                  return (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm text-foreground w-20 truncate">{metric.companyName}</span>
-                      <div className="flex-1 ml-4 mr-4">
-                        <Progress value={percentage} className="h-4" />
-                      </div>
-                      <span className="text-sm font-mono text-foreground w-16">
-                        {formatCurrency(metric.revenue)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Profit Margin Comparison */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Profit Margin Comparison (%)
-              </h4>
-              <div className="space-y-3">
-                {result.metrics.map((metric, index) => {
-                  const maxMargin = Math.max(...result.metrics.map(m => m.profitMargin || 0));
-                  const percentage = maxMargin > 0 ? ((metric.profitMargin || 0) / maxMargin) * 100 : 0;
-                  return (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm text-foreground w-20 truncate">{metric.companyName}</span>
-                      <div className="flex-1 ml-4 mr-4">
-                        <Progress value={percentage} className="h-4" />
-                      </div>
-                      <span className="text-sm font-mono text-foreground w-16">
-                        {formatPercent(metric.profitMargin)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Enhanced Visual Comparison */}
+      <EnhancedVisualComparison metrics={result.metrics} />
 
       {/* Action Buttons */}
       <div className="text-center">
