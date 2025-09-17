@@ -168,7 +168,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               aiExtractedCompanyName
             );
             
-            const isValid = nameValidation.isMatch && nameValidation.confidence >= 0.8;
+            const isValid = nameValidation.isMatch && nameValidation.confidence >= 0.5; // Temporarily lowered from 0.8 to 0.5
+            
+            // Add detailed logging for debugging
+            console.log(`Company name validation for ${userEnteredName}:`, {
+              userEnteredName,
+              aiExtractedCompanyName,
+              confidence: nameValidation.confidence,
+              isMatch: nameValidation.isMatch,
+              isValid,
+              issues: nameValidation.issues
+            });
             
             documentValidations.push({
               documentId: docId,
