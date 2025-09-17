@@ -342,16 +342,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const company = await storage.getCompany(companyId);
         const metrics = await storage.getMetricsByCompany(companyId);
         
-        if (company && metrics.length > 0) {
-          // Get the most recent metrics for each company
-          const latestMetrics = metrics[metrics.length - 1];
+        console.log(`Processing company ${company?.name || companyId}: found ${metrics?.length || 0} metrics records`);
+        
+        if (company) {
+          // Get the most recent metrics for each company, or create basic structure if none exist
+          let latestMetrics;
+          if (metrics && metrics.length > 0) {
+            latestMetrics = metrics[metrics.length - 1];
+            console.log(`Using existing metrics for ${company.name}:`, {
+              revenue: latestMetrics.revenue,
+              netIncome: latestMetrics.netIncome,
+              period: latestMetrics.period
+            });
+          } else {
+            // Create basic structure for companies with no metrics yet
+            console.log(`No metrics found for ${company.name}, creating basic structure`);
+            latestMetrics = {
+              companyId: companyId,
+              period: 'Unknown',
+              year: new Date().getFullYear(),
+              revenue: null,
+              netIncome: null,
+              totalAssets: null,
+              cashEquivalents: null,
+              profitMargin: null,
+              yoyGrowth: null,
+              ebitda: null,
+              debt: null
+            };
+          }
           
           // Try to enrich missing data with web search
           let enrichedMetrics: any = { ...latestMetrics, companyName: company.name };
           
           try {
             // Check if key metrics are missing and search for them
-            const hasMissingData = !latestMetrics.revenue || !latestMetrics.netIncome || !latestMetrics.period;
+            const hasMissingData = !latestMetrics.revenue || !latestMetrics.netIncome || !latestMetrics.period || latestMetrics.period === 'Unknown';
             
             if (hasMissingData) {
               console.log(`Attempting web enrichment for ${company.name} - missing key financial data`);
@@ -381,12 +407,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Continue with original metrics if web enrichment fails
           }
           
+          // Always add the company to allMetrics, even if data is incomplete
           allMetrics.push(enrichedMetrics);
+          console.log(`Added metrics for ${company.name} to comparison (total now: ${allMetrics.length})`);
+        } else {
+          console.error(`Company not found for ID: ${companyId}`);
         }
       }
 
+      console.log(`Final metrics count: ${allMetrics.length} companies`);
+      
       if (allMetrics.length < 2) {
-        return res.status(400).json({ error: 'Insufficient metrics data for comparison' });
+        return res.status(400).json({ error: `Insufficient metrics data for comparison. Found ${allMetrics.length} companies with data, need at least 2.` });
       }
 
       const insights = await openaiService.generateComparisonInsights(allMetrics.map(m => ({
