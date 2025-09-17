@@ -75,10 +75,17 @@ export class OpenAIService {
       // Check for OpenAI specific API error codes
       if (error.constructor.name === 'APIError' || 'status' in error) {
         const status = (error as any).status;
+        // 401 Authentication errors (invalid API key) should trigger fallback
         // 408 Request Timeout, 5xx Server Errors indicate connectivity issues
-        if (status === 408 || (status >= 500 && status <= 599)) {
+        if (status === 401 || status === 408 || (status >= 500 && status <= 599)) {
           return true;
         }
+      }
+      
+      // Check for authentication errors specifically
+      if (error.constructor.name === 'AuthenticationError' || 
+          (error as any).code === 'invalid_api_key') {
+        return true; // Invalid API key - service effectively unavailable
       }
       
       // Check error codes directly
