@@ -29,7 +29,10 @@ import {
   PieChart as PieChartIcon,
   RadarIcon,
   TrendingUp,
-  Activity
+  Activity,
+  Target,
+  DollarSign,
+  Scale
 } from 'lucide-react';
 
 interface MetricData {
@@ -37,10 +40,50 @@ interface MetricData {
   period: string;
   revenue?: number | null;
   netIncome?: number | null;
-  profitMargin?: number | null;
-  totalAssets?: number | null;
-  yoyGrowth?: number | null;
+  grossProfit?: number | null;
+  operatingIncome?: number | null;
   ebitda?: number | null;
+  totalAssets?: number | null;
+  currentAssets?: number | null;
+  currentLiabilities?: number | null;
+  totalDebt?: number | null;
+  longTermDebt?: number | null;
+  shortTermDebt?: number | null;
+  cashEquivalents?: number | null;
+  shareholdersEquity?: number | null;
+  sharesOutstanding?: number | null;
+  
+  // Basic metrics
+  profitMargin?: number | null;
+  grossMargin?: number | null;
+  operatingMargin?: number | null;
+  yoyGrowth?: number | null;
+  
+  // Profitability ratios
+  roe?: number | null;
+  roa?: number | null;
+  roic?: number | null;
+  
+  // Liquidity ratios
+  currentRatio?: number | null;
+  quickRatio?: number | null;
+  cashRatio?: number | null;
+  
+  // Leverage ratios
+  debtToEquity?: number | null;
+  debtToAssets?: number | null;
+  interestCoverage?: number | null;
+  
+  // Per share metrics
+  eps?: number | null;
+  bookValuePerShare?: number | null;
+  
+  // Valuation ratios
+  peRatio?: number | null;
+  pbRatio?: number | null;
+  marketCap?: number | null;
+  
+  // Legacy and other fields
   debt?: number | null;
   enrichedFields?: any;
 }
@@ -49,26 +92,21 @@ interface EnhancedVisualComparisonProps {
   metrics: MetricData[];
 }
 
-type ChartType = 'bar' | 'line' | 'pie' | 'radar' | 'metric-cards';
+type ChartType = 'bar' | 'line' | 'pie' | 'radar' | 'metric-cards' | 'profitability' | 'valuation' | 'leverage';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
 export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComparisonProps) {
   const [activeChart, setActiveChart] = useState<ChartType>('bar');
 
-  // Format data for different chart types - preserve null values
+  // Format data for different chart types - preserve null values and include all financial ratios
   const formatDataForCharts = () => {
     return metrics.map((metric, index) => ({
       name: metric.companyName.length > 8 ? metric.companyName.substring(0, 8) + '...' : metric.companyName,
       fullName: metric.companyName,
-      revenue: metric.revenue,
-      netIncome: metric.netIncome,
-      profitMargin: metric.profitMargin,
-      totalAssets: metric.totalAssets,
-      yoyGrowth: metric.yoyGrowth,
-      ebitda: metric.ebitda,
-      debt: metric.debt,
       color: COLORS[index % COLORS.length],
+      // Spread all metric data to ensure new ratios are available
+      ...metric
     }));
   };
 
@@ -125,6 +163,9 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
     { type: 'pie', label: 'Revenue Split', icon: PieChartIcon },
     { type: 'radar', label: 'Performance Radar', icon: RadarIcon },
     { type: 'metric-cards', label: 'Metric Cards', icon: Activity },
+    { type: 'profitability', label: 'Profitability', icon: Target },
+    { type: 'valuation', label: 'Valuation', icon: DollarSign },
+    { type: 'leverage', label: 'Leverage & Liquidity', icon: Scale },
   ];
 
   const formatCurrency = (value: number | null | undefined) => {
@@ -135,6 +176,16 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
   const formatPercent = (value: number | null | undefined) => {
     if (value === null || value === undefined) return 'N/A';
     return `${value.toFixed(1)}%`;
+  };
+
+  const formatRatio = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return value.toFixed(2);
+  };
+
+  const formatEPS = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `$${value.toFixed(2)}`;
   };
 
   const renderBarChart = () => (
@@ -357,7 +408,7 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                 >
                   <span className="text-sm text-muted-foreground">Profit Margin</span>
                   <Badge 
-                    variant={company.profitMargin > 10 ? "default" : "secondary"}
+                    variant={(company.profitMargin && company.profitMargin > 10) ? "default" : "secondary"}
                   >
                     {formatPercent(company.profitMargin)}
                   </Badge>
@@ -370,7 +421,8 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
                 >
                   <span className="text-sm text-muted-foreground">YoY Growth</span>
                   <Badge 
-                    variant={company.yoyGrowth > 0 ? "default" : "destructive"}
+                    variant={company.yoyGrowth === null || company.yoyGrowth === undefined ? "secondary" : 
+                            (company.yoyGrowth > 0) ? "default" : "destructive"}
                   >
                     {formatPercent(company.yoyGrowth)}
                   </Badge>
@@ -383,6 +435,184 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
     </motion.div>
   );
 
+  // New Financial Ratio Visualizations
+  const renderProfitabilityChart = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-6"
+    >
+      <div className="h-80">
+        <h3 className="text-lg font-semibold mb-4 text-center">Profitability Ratios</h3>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+            <XAxis dataKey="name" className="text-xs" />
+            <YAxis className="text-xs" />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                fontSize: '12px'
+              }}
+              formatter={(value: number, name: string) => [
+                name.includes('Margin') ? formatPercent(value) : formatPercent(value),
+                name === 'roe' ? 'ROE' : 
+                name === 'roa' ? 'ROA' : 
+                name === 'roic' ? 'ROIC' : 
+                name === 'grossMargin' ? 'Gross Margin' :
+                name === 'operatingMargin' ? 'Operating Margin' : 
+                name === 'profitMargin' ? 'Net Margin' : name
+              ]}
+            />
+            <Legend />
+            <Bar dataKey="roe" fill="#8884d8" name="ROE (%)" />
+            <Bar dataKey="roa" fill="#82ca9d" name="ROA (%)" />
+            <Bar dataKey="roic" fill="#ffc658" name="ROIC (%)" />
+            <Bar dataKey="grossMargin" fill="#ff7c7c" name="Gross Margin (%)" />
+            <Bar dataKey="operatingMargin" fill="#8dd1e1" name="Operating Margin (%)" />
+            <Bar dataKey="profitMargin" fill="#c084fc" name="Net Margin (%)" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </motion.div>
+  );
+
+  const renderValuationChart = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-6"
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-80">
+          <h3 className="text-lg font-semibold mb-4 text-center">Valuation Ratios</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+                formatter={(value: any, name: string) => [
+                  value === null || value === undefined ? 'N/A' :
+                  name === 'peRatio' ? formatRatio(value) + 'x' :
+                  name === 'pbRatio' ? formatRatio(value) + 'x' : 
+                  formatRatio(value) + 'x',
+                  name === 'peRatio' ? 'P/E Ratio' :
+                  name === 'pbRatio' ? 'P/B Ratio' : name
+                ]}
+              />
+              <Legend />
+              <Bar dataKey="peRatio" fill="#8884d8" name="P/E Ratio" />
+              <Bar dataKey="pbRatio" fill="#82ca9d" name="P/B Ratio" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="h-80">
+          <h3 className="text-lg font-semibold mb-4 text-center">Per Share Metrics</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+                formatter={(value: any, name: string) => [
+                  value === null || value === undefined ? 'N/A' :
+                  name === 'eps' ? formatEPS(value) : formatEPS(value),
+                  name === 'eps' ? 'Earnings Per Share' : 'Book Value Per Share'
+                ]}
+              />
+              <Legend />
+              <Bar dataKey="eps" fill="#ffc658" name="EPS ($)" />
+              <Bar dataKey="bookValuePerShare" fill="#ff7c7c" name="Book Value Per Share ($)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderLeverageChart = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-6"
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-80">
+          <h3 className="text-lg font-semibold mb-4 text-center">Leverage Ratios</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+                formatter={(value: any, name: string) => [
+                  value === null || value === undefined ? 'N/A' : formatRatio(value),
+                  name === 'debtToEquity' ? 'Debt-to-Equity' :
+                  name === 'debtToAssets' ? 'Debt-to-Assets (%)' : name
+                ]}
+              />
+              <Legend />
+              <Bar dataKey="debtToEquity" fill="#8884d8" name="Debt-to-Equity" />
+              <Bar dataKey="debtToAssets" fill="#82ca9d" name="Debt-to-Assets (%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="h-80">
+          <h3 className="text-lg font-semibold mb-4 text-center">Liquidity Ratios</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+                formatter={(value: any, name: string) => [
+                  value === null || value === undefined ? 'N/A' : formatRatio(value),
+                  name === 'currentRatio' ? 'Current Ratio' :
+                  name === 'quickRatio' ? 'Quick Ratio' :
+                  name === 'cashRatio' ? 'Cash Ratio' : name
+                ]}
+              />
+              <Legend />
+              <Bar dataKey="currentRatio" fill="#ffc658" name="Current Ratio" />
+              <Bar dataKey="quickRatio" fill="#ff7c7c" name="Quick Ratio" />
+              <Bar dataKey="cashRatio" fill="#8dd1e1" name="Cash Ratio" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   const renderChart = () => {
     switch (activeChart) {
       case 'bar': return renderBarChart();
@@ -390,6 +620,9 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
       case 'pie': return renderPieChart();
       case 'radar': return renderRadarChart();
       case 'metric-cards': return renderMetricCards();
+      case 'profitability': return renderProfitabilityChart();
+      case 'valuation': return renderValuationChart();
+      case 'leverage': return renderLeverageChart();
       default: return renderBarChart();
     }
   };
