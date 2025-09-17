@@ -152,16 +152,28 @@ export class GeminiService {
     - "Share capital", "Reserves and surplus"
     - "Number of shares", "Weighted average shares"
     
-    **CRITICAL EXTRACTION RULES**:
+    **CRITICAL EXTRACTION RULES FOR INDIAN FINANCIAL DOCUMENTS**:
     1. **Currency Conversion**: For INR values, convert to USD using rate 1 USD = 83 INR
     2. **Scale Conversion**: 
-       - If document shows "in Crores" → multiply by 10 to get millions, then divide by 1000 to get billions
-       - If document shows "in Millions" → divide by 1000 to get billions
-       - If document shows "in Thousands" → divide by 1,000,000 to get billions
-    3. **Parentheses**: Numbers in parentheses () typically indicate negative values or losses
-    4. **Confidence**: High confidence (0.9+) for clearly labeled table values, lower for estimated values
-    5. **Evidence**: Capture the exact table row/cell where you found each value
-    6. **NULL policy**: If you cannot find a specific metric, return null - DO NOT guess or fabricate
+       - If document shows "in Crores" → multiply by 10 million, then divide by 1000 to get billions USD
+       - If document shows "in Millions" → divide by 1000 to get billions USD
+       - If document shows "in Thousands" → divide by 1,000,000 to get billions USD
+       - If document shows "in Lakhs" → multiply by 100,000, then convert currency and scale
+    3. **Table Recognition**: Look specifically for:
+       - Income Statement tables with rows for Revenue, Net Profit, Operating Income
+       - Balance Sheet tables with rows for Total Assets, Shareholders' Equity, Debt
+       - Tables with multiple columns showing Current Quarter vs Previous Year
+    4. **Indian Terminology**: 
+       - "PAT" = Profit After Tax = Net Income
+       - "Revenue from operations" = Revenue
+       - "Total comprehensive income" = Net Income
+       - "Net worth" = Shareholders' Equity
+    5. **Data Quality**: 
+       - Extract ACTUAL NUMBERS from tables, not text descriptions
+       - Use confidence 0.95 for clearly visible table values
+       - Use confidence 0.3 or lower for unclear or estimated values
+    6. **Evidence**: Provide the exact table cell content where each value was found
+    7. **MANDATORY**: If you see tabular financial data, you MUST extract the core metrics (revenue, net income, total assets). Return null only if genuinely absent.
     
     Return JSON format with confidence and evidence:
     {
@@ -237,7 +249,9 @@ export class GeminiService {
 
       let aiResult;
       try {
+        console.log(`Raw Gemini response for ${validatedCompanyName}:`, jsonText);
         aiResult = JSON.parse(jsonText);
+        console.log(`Parsed Gemini result for ${validatedCompanyName}:`, JSON.stringify(aiResult, null, 2));
       } catch (parseError) {
         console.error('Failed to parse Gemini JSON response:', parseError);
         console.error('Raw response:', jsonText);
