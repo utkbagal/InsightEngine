@@ -65,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const company = await storage.createCompany({
-        ...validatedData,
+        name: validatedData.name,
         normalizedName
       });
 

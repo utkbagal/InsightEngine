@@ -48,6 +48,7 @@ export const comparisons = pgTable("comparisons", {
 
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
+  normalizedName: true,
   createdAt: true,
 });
 
