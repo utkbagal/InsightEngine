@@ -201,8 +201,14 @@ export class GeminiService {
     
     **OTHER FINANCIAL METRICS** (in various tables):
     - "Gross profit", "Operating profit/loss", "EBITDA"
+    - "PAT", "Profit After Tax" (may be same as net income but extract separately if available)
     - "Share capital", "Reserves and surplus"
     - "Number of shares", "Weighted average shares"
+    
+    **SALES VOLUME METRICS** (look for in operating or key metrics sections):
+    - "Units sold", "Volume sold", "Sales volume", "Number of units"
+    - "Total vehicles sold", "Production volume", "Quantity sold"
+    - Usually found in operating metrics or key performance indicators
     
     **CRITICAL EXTRACTION RULES FOR INDIAN FINANCIAL DOCUMENTS**:
     1. **Currency Conversion**: For INR values, convert to USD using rate 1 USD = 83 INR
@@ -250,6 +256,8 @@ export class GeminiService {
       "grossProfit": number (in billions USD),
       "operatingIncome": number (in billions USD),
       "ebitda": number (in billions USD),
+      "pat": number (in billions USD, may be same as netIncome but extract separately if explicitly mentioned),
+      "salesVolume": number (in millions of units sold),
       "totalAssets": number (in billions USD),
       "currentAssets": number (in billions USD),
       "currentLiabilities": number (in billions USD),

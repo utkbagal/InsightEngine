@@ -35,6 +35,11 @@ export const financialMetrics = pgTable("financial_metrics", {
   grossProfit: real("gross_profit"),
   operatingIncome: real("operating_income"),
   ebitda: real("ebitda"),
+  pat: real("pat"), // Profit After Tax (in billions USD)
+  
+  // Sales Metrics
+  salesVolume: real("sales_volume"), // Number of units sold (in millions)
+  salesUnits: real("sales_units"), // Alternative field for units sold
   
   // Balance Sheet Metrics (in billions USD)
   totalAssets: real("total_assets"),

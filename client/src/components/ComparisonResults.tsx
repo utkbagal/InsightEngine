@@ -150,7 +150,8 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
   };
 
   const calculateDifference = (val1?: number | null, val2?: number | null) => {
-    if (!val1 || !val2) return { text: 'N/A', isPositive: null };
+    if (val1 == null || val2 == null) return { text: 'N/A', isPositive: null };
+    if (val2 === 0) return { text: 'N/A', isPositive: null }; // Avoid division by zero
     const diff = ((val1 - val2) / val2) * 100;
     return {
       text: `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`,
@@ -167,6 +168,9 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
     const fundamentalMetrics = [
       { key: 'revenue', label: 'Revenue', format: formatCurrency },
       { key: 'netIncome', label: 'Net Income', format: formatCurrency },
+      { key: 'ebitda', label: 'EBITDA', format: formatCurrency },
+      { key: 'pat', label: 'PAT (Profit After Tax)', format: formatCurrency },
+      { key: 'salesVolume', label: 'Sales Volume (Million Units)', format: formatNumber },
       { key: 'profitMargin', label: 'Profit Margin', format: formatPercent },
       { key: 'yoyGrowth', label: 'YoY Growth', format: formatPercent }
     ];
@@ -635,6 +639,81 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                   <td className="p-4 text-center">
                     {(() => {
                       const diff = calculateDifference(result.metrics[0].netIncome, result.metrics[1].netIncome);
+                      return (
+                        <Badge variant={diff.isPositive ? "default" : "destructive"}>
+                          {diff.text}
+                        </Badge>
+                      );
+                    })()}
+                  </td>
+                )}
+              </tr>
+              <tr className="hover:bg-muted/30">
+                <td className="p-4 font-medium text-foreground">EBITDA (USD Billions)</td>
+                {result.metrics.map((metric, index) => (
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-ebitda-${index}`}
+                  >
+                    {formatCurrency(metric.ebitda)}
+                  </td>
+                ))}
+                {result.metrics.length === 2 && (
+                  <td className="p-4 text-center">
+                    {(() => {
+                      const diff = calculateDifference(result.metrics[0].ebitda, result.metrics[1].ebitda);
+                      return (
+                        <Badge variant={diff.isPositive ? "default" : "destructive"}>
+                          {diff.text}
+                        </Badge>
+                      );
+                    })()}
+                  </td>
+                )}
+              </tr>
+              <tr className="hover:bg-muted/30">
+                <td className="p-4 font-medium text-foreground">PAT (USD Billions)</td>
+                {result.metrics.map((metric, index) => (
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-pat-${index}`}
+                  >
+                    {formatCurrency(metric.pat)}
+                  </td>
+                ))}
+                {result.metrics.length === 2 && (
+                  <td className="p-4 text-center">
+                    {(() => {
+                      const diff = calculateDifference(result.metrics[0].pat, result.metrics[1].pat);
+                      return (
+                        <Badge variant={diff.isPositive ? "default" : "destructive"}>
+                          {diff.text}
+                        </Badge>
+                      );
+                    })()}
+                  </td>
+                )}
+              </tr>
+              <tr className="hover:bg-muted/30">
+                <td className="p-4 font-medium text-foreground">Sales Volume (Million Units)</td>
+                {result.metrics.map((metric, index) => (
+                  <td 
+                    key={index} 
+                    className="p-4 text-right font-mono"
+                    style={{ backgroundColor: LIGHT_COLORS[index % LIGHT_COLORS.length] }}
+                    data-testid={`cell-salesvolume-${index}`}
+                  >
+                    {formatNumber(metric.salesVolume)}
+                  </td>
+                ))}
+                {result.metrics.length === 2 && (
+                  <td className="p-4 text-center">
+                    {(() => {
+                      const diff = calculateDifference(result.metrics[0].salesVolume, result.metrics[1].salesVolume);
                       return (
                         <Badge variant={diff.isPositive ? "default" : "destructive"}>
                           {diff.text}

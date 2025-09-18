@@ -32,6 +32,9 @@ export interface FinancialMetrics {
   profitMargin?: number;
   yoyGrowth?: number;
   ebitda?: number;
+  pat?: number;
+  salesVolume?: number;
+  salesUnits?: number;
   debt?: number;
   rawMetrics: Record<string, any>;
   extractedAt: string;
