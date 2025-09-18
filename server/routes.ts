@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { openaiService } from "./services/openaiService";
 import { geminiService } from "./services/geminiService";
 import { documentProcessor } from "./services/documentProcessor";
@@ -126,8 +127,23 @@ async function extractFinancialMetricsFromWeb(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Upload and analyze documents
-  app.post('/api/companies/:companyId/documents', upload.single('document'), async (req, res) => {
+  // Setup authentication middleware from Replit Auth blueprint:javascript_log_in_with_replit
+  await setupAuth(app);
+
+  // Authentication routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Upload and analyze documents - Protected route  
+  app.post('/api/companies/:companyId/documents', isAuthenticated, upload.single('document'), async (req, res) => {
     try {
       const { companyId } = req.params;
       const file = req.file;
@@ -175,8 +191,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create or get company
-  app.post('/api/companies', async (req, res) => {
+  // Create or get company - Protected route
+  app.post('/api/companies', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertCompanySchema.parse(req.body);
       const normalizedName = kpiNormalizer.normalizeCompanyName(validatedData.name);
@@ -199,8 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analyze documents for compatibility
-  app.post('/api/analyze/compatibility', async (req, res) => {
+  // Analyze documents for compatibility - Protected route
+  app.post('/api/analyze/compatibility', isAuthenticated, async (req, res) => {
     try {
       const { documentIds } = req.body;
 
@@ -237,8 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extract financial metrics from documents with improved validation
-  app.post('/api/analyze/metrics', async (req, res) => {
+  // Extract financial metrics from documents with improved validation - Protected route
+  app.post('/api/analyze/metrics', isAuthenticated, async (req, res) => {
     try {
       const { documentIds } = req.body;
 
@@ -421,8 +437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate comparison insights
-  app.post('/api/analyze/insights', async (req, res) => {
+  // Generate comparison insights - Protected route
+  app.post('/api/analyze/insights', isAuthenticated, async (req, res) => {
     try {
       const { companyIds } = req.body;
 

@@ -1,13 +1,37 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChartLine, FileText, Brain, BarChart3, Rocket, Upload, Zap, Download, Mail, User } from "lucide-react";
+import { ChartLine, FileText, Brain, BarChart3, Rocket, Upload, Zap, Download, Mail, User, LogIn, UserPlus, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import type { User as UserType } from "@shared/schema";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const { toast } = useToast();
 
   const handleStartComparison = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to start comparing companies.",
+        variant: "default",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 1000);
+      return;
+    }
     setLocation("/compare");
+  };
+
+  const handleSignIn = () => {
+    window.location.href = "/api/login";
+  };
+
+  const handleSignOut = () => {
+    window.location.href = "/api/logout";
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -49,6 +73,49 @@ export default function LandingPage() {
               >
                 Contact
               </button>
+              
+              {!isLoading && (
+                <div className="flex items-center space-x-4">
+                  {isAuthenticated ? (
+                    <div className="flex items-center space-x-4">
+                      {user?.firstName && (
+                        <span className="text-sm text-muted-foreground">
+                          Hi, {user.firstName}
+                        </span>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleSignOut}
+                        data-testid="button-sign-out"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleSignIn}
+                        data-testid="button-sign-in"
+                      >
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign In
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={handleSignIn}
+                        data-testid="button-sign-up"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Sign Up
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </nav>
           </div>
         </div>
@@ -75,9 +142,10 @@ export default function LandingPage() {
                 size="lg"
                 className="font-semibold text-lg px-8 py-4 transform hover:scale-105 transition-all duration-200"
                 data-testid="button-start-comparing"
+                disabled={isLoading}
               >
                 <Rocket className="mr-2 h-5 w-5" />
-                Start Comparing
+                {isAuthenticated ? "Start Comparing" : "Sign In to Compare"}
               </Button>
             </CardContent>
           </Card>

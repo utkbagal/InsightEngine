@@ -1,4 +1,4 @@
-import { type Company, type Document, type FinancialMetrics, type Comparison, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison, companies, documents, financialMetrics, comparisons } from "@shared/schema";
+import { type Company, type Document, type FinancialMetrics, type Comparison, type User, type UpsertUser, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison, companies, documents, financialMetrics, comparisons, users } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -10,6 +10,10 @@ neonConfig.fetchConnectionCache = true;
 neonConfig.webSocketConstructor = ws;
 
 export interface IStorage {
+  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
   // Companies
   createCompany(company: InsertCompany & { normalizedName: string }): Promise<Company>;
   getCompany(id: string): Promise<Company | undefined>;
@@ -32,16 +36,39 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private users: Map<string, User> = new Map();
   private companies: Map<string, Company> = new Map();
   private documents: Map<string, Document> = new Map();
   private financialMetrics: Map<string, FinancialMetrics> = new Map();
   private comparisons: Map<string, Comparison> = new Map();
 
+  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existingUser = this.users.get(userData.id!);
+    const user: User = {
+      id: userData.id!,
+      email: userData.email ?? null,
+      firstName: userData.firstName ?? null,
+      lastName: userData.lastName ?? null,
+      profileImageUrl: userData.profileImageUrl ?? null,
+      createdAt: existingUser?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(userData.id!, user);
+    return user;
+  }
+
   async createCompany(insertCompany: InsertCompany & { normalizedName: string }): Promise<Company> {
     const id = randomUUID();
     const company: Company = {
-      ...insertCompany,
       id,
+      name: insertCompany.name,
+      normalizedName: insertCompany.normalizedName,
+      sector: insertCompany.sector ?? null,
       createdAt: new Date(),
     };
     this.companies.set(id, company);
@@ -94,18 +121,56 @@ export class MemStorage implements IStorage {
   async createFinancialMetrics(insertMetrics: InsertFinancialMetrics): Promise<FinancialMetrics> {
     const id = randomUUID();
     const metrics: FinancialMetrics = {
-      ...insertMetrics,
       id,
-      quarter: insertMetrics.quarter || null,
-      revenue: insertMetrics.revenue || null,
-      netIncome: insertMetrics.netIncome || null,
-      totalAssets: insertMetrics.totalAssets || null,
-      cashEquivalents: insertMetrics.cashEquivalents || null,
-      profitMargin: insertMetrics.profitMargin || null,
-      yoyGrowth: insertMetrics.yoyGrowth || null,
-      ebitda: insertMetrics.ebitda || null,
-      debt: insertMetrics.debt || null,
-      rawMetrics: insertMetrics.rawMetrics || {},
+      companyId: insertMetrics.companyId,
+      documentId: insertMetrics.documentId,
+      period: insertMetrics.period,
+      year: insertMetrics.year,
+      quarter: insertMetrics.quarter ?? null,
+      revenue: insertMetrics.revenue ?? null,
+      netIncome: insertMetrics.netIncome ?? null,
+      grossProfit: insertMetrics.grossProfit ?? null,
+      operatingIncome: insertMetrics.operatingIncome ?? null,
+      ebitda: insertMetrics.ebitda ?? null,
+      pat: insertMetrics.pat ?? null,
+      salesVolume: insertMetrics.salesVolume ?? null,
+      salesUnits: insertMetrics.salesUnits ?? null,
+      totalAssets: insertMetrics.totalAssets ?? null,
+      currentAssets: insertMetrics.currentAssets ?? null,
+      currentLiabilities: insertMetrics.currentLiabilities ?? null,
+      totalDebt: insertMetrics.totalDebt ?? null,
+      longTermDebt: insertMetrics.longTermDebt ?? null,
+      shortTermDebt: insertMetrics.shortTermDebt ?? null,
+      cashEquivalents: insertMetrics.cashEquivalents ?? null,
+      shareholdersEquity: insertMetrics.shareholdersEquity ?? null,
+      sharesOutstanding: insertMetrics.sharesOutstanding ?? null,
+      profitMargin: insertMetrics.profitMargin ?? null,
+      grossMargin: insertMetrics.grossMargin ?? null,
+      operatingMargin: insertMetrics.operatingMargin ?? null,
+      yoyGrowth: insertMetrics.yoyGrowth ?? null,
+      roe: insertMetrics.roe ?? null,
+      roa: insertMetrics.roa ?? null,
+      roic: insertMetrics.roic ?? null,
+      currentRatio: insertMetrics.currentRatio ?? null,
+      quickRatio: insertMetrics.quickRatio ?? null,
+      cashRatio: insertMetrics.cashRatio ?? null,
+      debtToEquity: insertMetrics.debtToEquity ?? null,
+      debtToAssets: insertMetrics.debtToAssets ?? null,
+      interestCoverage: insertMetrics.interestCoverage ?? null,
+      eps: insertMetrics.eps ?? null,
+      bookValuePerShare: insertMetrics.bookValuePerShare ?? null,
+      peRatio: insertMetrics.peRatio ?? null,
+      pbRatio: insertMetrics.pbRatio ?? null,
+      marketCap: insertMetrics.marketCap ?? null,
+      currentPrice: insertMetrics.currentPrice ?? null,
+      weekHigh52: insertMetrics.weekHigh52 ?? null,
+      weekLow52: insertMetrics.weekLow52 ?? null,
+      dividendYield: insertMetrics.dividendYield ?? null,
+      extractionConfidence: insertMetrics.extractionConfidence ?? null,
+      extractionMethod: insertMetrics.extractionMethod ?? null,
+      dataSource: insertMetrics.dataSource ?? null,
+      debt: insertMetrics.debt ?? null,
+      rawMetrics: insertMetrics.rawMetrics ?? {},
       extractedAt: new Date(),
     };
     this.financialMetrics.set(id, metrics);
@@ -151,6 +216,27 @@ class DatabaseStorage implements IStorage {
     
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     this.db = drizzle(pool);
+  }
+
+  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await this.db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
   async createCompany(insertCompany: InsertCompany & { normalizedName: string }): Promise<Company> {
