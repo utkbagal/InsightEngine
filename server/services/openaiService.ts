@@ -155,7 +155,7 @@ export class OpenAIService {
             content: prompt
           }
         ],
-        max_completion_tokens: 100
+        max_completion_tokens: 300
       });
 
       const result = response.choices[0].message.content?.trim();

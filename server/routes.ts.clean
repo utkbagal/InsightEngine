@@ -315,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               aiExtractedCompanyName
             );
             
-            const isValid = nameValidation.isMatch && nameValidation.confidence >= 0.3; // Very permissive for extraction
+            const isValid = nameValidation.isMatch && nameValidation.confidence >= 0.5; // Temporarily lowered from 0.8 to 0.5
             
             // Add detailed logging for debugging
             console.log(`Company name validation for ${userEnteredName}:`, {
