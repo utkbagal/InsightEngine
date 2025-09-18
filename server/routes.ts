@@ -624,7 +624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export comparison to CSV
+  // Export comprehensive comparison to CSV
   app.get('/api/comparisons/:comparisonId/export', async (req, res) => {
     try {
       const { comparisonId } = req.params;
@@ -635,30 +635,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const companyIds = comparison.companyIds as string[];
-      const csvRows = ['Company,Period,Revenue (B),Net Income (B),Total Assets (B),Cash Equivalents (B),Profit Margin (%),YoY Growth (%)'];
+      const csvData: string[] = [];
 
+      // Header section
+      csvData.push('COMPREHENSIVE FINANCIAL COMPARISON REPORT');
+      csvData.push(`Comparison ID: ${comparisonId}`);
+      csvData.push(`Generated: ${new Date().toISOString()}`);
+      csvData.push('');
+
+      // Core Financial Metrics Table
+      csvData.push('=== CORE FINANCIAL METRICS ===');
+      const coreHeaders = [
+        'Company', 'Period', 'Year', 'Quarter', 'Sector',
+        'Revenue (B)', 'Net Income (B)', 'Gross Profit (B)', 'Operating Income (B)', 
+        'EBITDA (B)', 'PAT (B)', 'Total Assets (B)', 'Cash Equivalents (B)',
+        'Profit Margin (%)', 'Gross Margin (%)', 'Operating Margin (%)', 'YoY Growth (%)'
+      ];
+      csvData.push(coreHeaders.join(','));
+
+      const companiesData = [];
       for (const companyId of companyIds) {
         const company = await storage.getCompany(companyId);
         const metrics = await storage.getMetricsByCompany(companyId);
         
         if (company && metrics.length > 0) {
           const latest = metrics[metrics.length - 1];
-          csvRows.push([
-            company.name,
-            latest.period,
+          const coreRow = [
+            `"${company.name}"`,
+            `"${latest.period}"`,
+            latest.year || 'N/A',
+            latest.quarter || 'N/A',
+            `"${company.sector || 'N/A'}"`,
             latest.revenue || 'N/A',
             latest.netIncome || 'N/A',
+            latest.grossProfit || 'N/A',
+            latest.operatingIncome || 'N/A',
+            latest.ebitda || 'N/A',
+            latest.pat || 'N/A',
             latest.totalAssets || 'N/A',
             latest.cashEquivalents || 'N/A',
             latest.profitMargin || 'N/A',
+            latest.grossMargin || 'N/A',
+            latest.operatingMargin || 'N/A',
             latest.yoyGrowth || 'N/A'
-          ].join(','));
+          ];
+          csvData.push(coreRow.join(','));
+          companiesData.push({ company, latest });
         }
       }
 
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="financial-comparison-${comparisonId}.csv"`);
-      res.send(csvRows.join('\n'));
+      csvData.push('');
+
+      // Balance Sheet & Additional Metrics
+      csvData.push('=== BALANCE SHEET & ADDITIONAL METRICS ===');
+      const balanceHeaders = [
+        'Company', 'Shareholders Equity (B)', 'Current Assets (B)', 'Current Liabilities (B)',
+        'Total Debt (B)', 'Long Term Debt (B)', 'Short Term Debt (B)', 
+        'Sales Volume (M)', 'Sales Units (M)', 'Shares Outstanding (M)'
+      ];
+      csvData.push(balanceHeaders.join(','));
+
+      for (const { company, latest } of companiesData) {
+        const balanceRow = [
+          `"${company.name}"`,
+          latest.shareholdersEquity || 'N/A',
+          latest.currentAssets || 'N/A',
+          latest.currentLiabilities || 'N/A',
+          latest.totalDebt || latest.debt || 'N/A',
+          latest.longTermDebt || 'N/A',
+          latest.shortTermDebt || 'N/A',
+          latest.salesVolume || 'N/A',
+          latest.salesUnits || 'N/A',
+          latest.sharesOutstanding || 'N/A'
+        ];
+        csvData.push(balanceRow.join(','));
+      }
+
+      csvData.push('');
+
+      // Financial Ratios
+      csvData.push('=== FINANCIAL RATIOS ===');
+      const ratioHeaders = [
+        'Company', 'ROE (%)', 'ROA (%)', 'ROIC (%)', 'Current Ratio', 'Quick Ratio', 'Cash Ratio',
+        'Debt to Equity', 'Debt to Assets', 'Interest Coverage', 'EPS', 'Book Value Per Share'
+      ];
+      csvData.push(ratioHeaders.join(','));
+
+      for (const { company, latest } of companiesData) {
+        const ratioRow = [
+          `"${company.name}"`,
+          latest.roe || 'N/A',
+          latest.roa || 'N/A',
+          latest.roic || 'N/A',
+          latest.currentRatio || 'N/A',
+          latest.quickRatio || 'N/A',
+          latest.cashRatio || 'N/A',
+          latest.debtToEquity || 'N/A',
+          latest.debtToAssets || 'N/A',
+          latest.interestCoverage || 'N/A',
+          latest.eps || 'N/A',
+          latest.bookValuePerShare || 'N/A'
+        ];
+        csvData.push(ratioRow.join(','));
+      }
+
+      csvData.push('');
+
+      // Market Data & Valuation
+      csvData.push('=== MARKET DATA & VALUATION ===');
+      const marketHeaders = [
+        'Company', 'Current Price', 'Market Cap (B)', '52W High', '52W Low', 
+        'P/E Ratio', 'P/B Ratio', 'Dividend Yield (%)', 'Extraction Confidence', 'Data Source'
+      ];
+      csvData.push(marketHeaders.join(','));
+
+      for (const { company, latest } of companiesData) {
+        const marketRow = [
+          `"${company.name}"`,
+          latest.currentPrice || 'N/A',
+          latest.marketCap || 'N/A',
+          latest.weekHigh52 || 'N/A',
+          latest.weekLow52 || 'N/A',
+          latest.peRatio || 'N/A',
+          latest.pbRatio || 'N/A',
+          latest.dividendYield || 'N/A',
+          latest.extractionConfidence || 'N/A',
+          `"${latest.dataSource || latest.extractionMethod || 'N/A'}"`
+        ];
+        csvData.push(marketRow.join(','));
+      }
+
+      csvData.push('');
+
+      // Side-by-side comparison with differences
+      if (companiesData.length === 2) {
+        csvData.push('=== SIDE-BY-SIDE COMPARISON (with differences) ===');
+        const comp1 = companiesData[0];
+        const comp2 = companiesData[1];
+        
+        csvData.push(`Metric,${comp1.company.name},${comp2.company.name},Difference,Difference %`);
+        
+        const compareMetrics = [
+          { key: 'revenue', label: 'Revenue (B)' },
+          { key: 'netIncome', label: 'Net Income (B)' },
+          { key: 'totalAssets', label: 'Total Assets (B)' },
+          { key: 'profitMargin', label: 'Profit Margin (%)' },
+          { key: 'yoyGrowth', label: 'YoY Growth (%)' },
+          { key: 'currentPrice', label: 'Current Price' },
+          { key: 'marketCap', label: 'Market Cap (B)' },
+          { key: 'peRatio', label: 'P/E Ratio' }
+        ];
+
+        for (const metric of compareMetrics) {
+          const val1 = comp1.latest[metric.key as keyof typeof comp1.latest] as number || 0;
+          const val2 = comp2.latest[metric.key as keyof typeof comp2.latest] as number || 0;
+          
+          if (val1 !== 0 && val2 !== 0) {
+            const diff = val2 - val1;
+            const diffPercent = ((diff / val1) * 100).toFixed(2);
+            const diffFormatted = diff > 0 ? `+${diff.toFixed(3)}` : diff.toFixed(3);
+            const diffPercentFormatted = diff > 0 ? `+${diffPercent}%` : `${diffPercent}%`;
+            
+            csvData.push(`${metric.label},${val1},${val2},${diffFormatted},${diffPercentFormatted}`);
+          } else {
+            csvData.push(`${metric.label},${val1 || 'N/A'},${val2 || 'N/A'},N/A,N/A`);
+          }
+        }
+        csvData.push('');
+      }
+
+      // AI-Generated Insights
+      const insights = (comparison as any).insights;
+      if (insights && typeof insights === 'object' && insights.insights && Array.isArray(insights.insights) && insights.insights.length > 0) {
+        csvData.push('=== AI ANALYSIS & INSIGHTS ===');
+        
+        if (insights.summary && typeof insights.summary === 'string') {
+          csvData.push('EXECUTIVE SUMMARY:');
+          csvData.push(`"${insights.summary}"`);
+          csvData.push('');
+        }
+        
+        csvData.push('DETAILED INSIGHTS:');
+        csvData.push('Type,Title,Description,Impact,Companies Involved');
+        
+        for (const insight of insights.insights) {
+          const insightRow = [
+            `"${insight.type || ''}"`,
+            `"${insight.title || ''}"`,
+            `"${insight.description || ''}"`,
+            `"${insight.impact || ''}"`,
+            `"${insight.companies?.join('; ') || 'All'}"`
+          ];
+          csvData.push(insightRow.join(','));
+        }
+        csvData.push('');
+      }
+
+      // Report footer
+      csvData.push('=== REPORT METADATA ===');
+      csvData.push(`Export Generated,${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+      csvData.push(`Number of Companies,${companiesData.length}`);
+      csvData.push(`Comparison ID,${comparisonId}`);
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="comprehensive-financial-comparison-${comparisonId}.csv"`);
+      res.send(csvData.join('\n'));
     } catch (error) {
       console.error('Export error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to export comparison' });
