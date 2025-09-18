@@ -38,15 +38,67 @@ export class GeminiService {
     else if (textLower.includes('eur') || textLower.includes('€')) currency = 'EUR';
     else if (textLower.includes('gbp') || textLower.includes('£')) currency = 'GBP';
     
-    // Detect period
+    // Detect period with enhanced patterns
     let period = null;
-    const yearMatch = textLower.match(/20\d{2}/);
-    const quarterMatch = textLower.match(/q([1-4])|quarter\s*([1-4])/);
-    if (quarterMatch && yearMatch) {
-      const qNum = quarterMatch[1] || quarterMatch[2];
-      period = `Q${qNum} ${yearMatch[0]}`;
-    } else if (yearMatch) {
-      period = `FY ${yearMatch[0]}`;
+    
+    // Enhanced year matching - handle F26, FY26, F2026, 2025, etc.
+    const yearMatch = textLower.match(/(?:20\d{2})|(?:f(?:y)?(\d{2}))|(?:fy\s*(\d{2}))/);
+    let year = null;
+    if (yearMatch) {
+      if (yearMatch[0].startsWith('20')) {
+        // Standard 4-digit year (2025)
+        year = yearMatch[0];
+      } else if (yearMatch[1] || yearMatch[2]) {
+        // F26, FY26 format - convert to full year
+        const shortYear = yearMatch[1] || yearMatch[2];
+        year = `20${shortYear}`;
+      }
+    }
+    
+    // Enhanced quarter matching
+    let quarter = null;
+    
+    // Direct quarter patterns: Q1, Q2, Quarter 1, etc.
+    const directQuarterMatch = textLower.match(/q([1-4])|quarter\s*([1-4])/);
+    if (directQuarterMatch) {
+      quarter = directQuarterMatch[1] || directQuarterMatch[2];
+    }
+    
+    // Date-based quarter detection: "quarter ended 30th June 2025"
+    if (!quarter) {
+      const dateQuarterMatch = textLower.match(/(?:quarter|three\s+months)\s+ended\s+(?:\d{1,2}(?:st|nd|rd|th)?\s+)?([a-z]+)\s+(\d{4})/);
+      if (dateQuarterMatch) {
+        const month = dateQuarterMatch[1].toLowerCase();
+        // Map months to quarters
+        if (['january', 'february', 'march', 'jan', 'feb', 'mar'].includes(month)) {
+          quarter = '4'; // Q4 of previous fiscal year ends in March
+        } else if (['april', 'may', 'june', 'apr', 'may', 'jun'].includes(month)) {
+          quarter = '1'; // Q1 ends in June
+        } else if (['july', 'august', 'september', 'jul', 'aug', 'sep'].includes(month)) {
+          quarter = '2'; // Q2 ends in September
+        } else if (['october', 'november', 'december', 'oct', 'nov', 'dec'].includes(month)) {
+          quarter = '3'; // Q3 ends in December
+        }
+        
+        // Use year from date if available and no year found yet
+        if (!year && dateQuarterMatch[2]) {
+          year = dateQuarterMatch[2];
+        }
+      }
+    }
+    
+    // Additional pattern: "Q1 F26" format
+    const combinedMatch = textLower.match(/q([1-4])\s+f(?:y)?(\d{2})/);
+    if (combinedMatch) {
+      quarter = combinedMatch[1];
+      year = `20${combinedMatch[2]}`;
+    }
+    
+    // Construct period string
+    if (quarter && year) {
+      period = `Q${quarter} ${year}`;
+    } else if (year) {
+      period = `FY ${year}`;
     }
     
     return { type, scale, currency, period };
@@ -175,10 +227,22 @@ export class GeminiService {
     6. **Evidence**: Provide the exact table cell content where each value was found
     7. **MANDATORY**: If you see tabular financial data, you MUST extract the core metrics (revenue, net income, total assets). Return null only if genuinely absent.
     
+    **FISCAL YEAR PATTERN RECOGNITION**:
+    - "Q1 F26" means Q1 of fiscal year 2026
+    - "F26", "FY26", "F2026" means fiscal year 2026  
+    - "quarter ended 30th June 2025" means Q1 of fiscal year 2026 (Indian companies)
+    - "three months ended [date]" indicates quarterly report
+    
+    **QUARTER MAPPING FOR INDIAN FISCAL YEAR (April-March):**
+    - Q1: April-June (quarter ending June)
+    - Q2: July-September (quarter ending September)  
+    - Q3: October-December (quarter ending December)
+    - Q4: January-March (quarter ending March)
+    
     Return JSON format with confidence and evidence:
     {
       "companyName": "${validatedCompanyName}",
-      "period": "string (e.g., Q1 2024, FY 2024)",
+      "period": "string (e.g., Q1 2026, FY 2026, June 30, 2025)",
       "year": number,
       "quarter": "string (Q1, Q2, Q3, Q4) or null for annual",
       "revenue": number (in billions USD),
@@ -298,6 +362,18 @@ export class GeminiService {
     2. Are the same type of financial document (10-K, 10-Q, annual report, etc.)
     3. Can be meaningfully compared
 
+    **IMPORTANT FISCAL YEAR PATTERNS TO RECOGNIZE:**
+    - "Q1 F26" means Q1 of fiscal year 2026
+    - "F26", "FY26" means fiscal year 2026
+    - "quarter ended 30th June 2025" means Q1 of fiscal year 2026 (Indian companies often end Q1 in June)
+    - "three months ended [date]" indicates quarterly report
+    
+    **QUARTER MAPPING FOR INDIAN FISCAL YEAR (April-March):**
+    - Q1: April-June (ends June)
+    - Q2: July-September (ends September)  
+    - Q3: October-December (ends December)
+    - Q4: January-March (ends March)
+
     Return a JSON object with compatibility analysis for each document:
     {
       "documents": [
@@ -306,7 +382,7 @@ export class GeminiService {
           "period": "string",
           "year": number,
           "quarter": "string or null",
-          "documentType": "string",
+          "documentType": "string", 
           "issues": ["array of issues if not compatible"]
         }
       ]
