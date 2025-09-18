@@ -1,16 +1,11 @@
-import OpenAI from "openai";
+import { AzureOpenAI } from "openai";
 import { geminiService } from "./geminiService";
 
-// Using Azure OpenAI API (2025 v1 format)
-const openai = new OpenAI({
-  apiKey:
-    process.env.OPENAI_API_KEY ||
-    process.env.OPENAI_API_KEY_ENV_VAR ||
-    "default_key",
-  baseURL: "https://secureapi-aoai-eastus.openai.azure.com/openai/v1/",
-  defaultHeaders: {
-    'api-key': process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
-  },
+// Using Azure OpenAI API
+const openai = new AzureOpenAI({
+  apiVersion: "2024-12-01-preview",
+  endpoint: "https://vibeathon2025.openai.azure.com",
+  apiKey: process.env.OPENAI_API_KEY || "default_key"
 });
 
 export interface ExtractedMetrics {
@@ -119,7 +114,7 @@ export class OpenAIService {
     
     // Remove provider-specific details but keep useful information
     const sanitized = error.message
-      .replace(/openai|gpt-4|api key|gemini/gi, 'AI service')
+      .replace(/openai|gpt-5-mini|api key|gemini/gi, 'AI service')
       .replace(/quota exceeded|rate limit/gi, 'service limit reached')
       .replace(/authentication failed/gi, 'service authentication error');
     
@@ -149,7 +144,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -253,7 +248,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -330,7 +325,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -409,7 +404,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
