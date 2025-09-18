@@ -153,8 +153,8 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
             <CardTitle className="text-center text-xl">Direct Comparison</CardTitle>
             <p className="text-center text-muted-foreground">Side-by-side key metrics</p>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <CardContent className="p-6">
+            <div className="space-y-4">
               {metrics.map((metric, index) => {
                 const value1 = company1[metric.key as keyof typeof company1] as number;
                 const value2 = company2[metric.key as keyof typeof company2] as number;
@@ -164,38 +164,44 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                 return (
                   <motion.div
                     key={metric.key}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="text-center"
+                    className="flex items-center justify-between py-3 border-b border-muted last:border-b-0"
                   >
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">{metric.label}</h4>
-                    <div className="space-y-2">
+                    {/* Metric Name on Left */}
+                    <div className="w-1/3">
+                      <h4 className="text-sm font-medium text-muted-foreground">{metric.label}</h4>
+                    </div>
+                    
+                    {/* Company Values on Right - Horizontally */}
+                    <div className="flex space-x-4 w-2/3 justify-end">
                       <div 
-                        className="p-3 rounded-lg border-2 transition-all"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all min-w-[140px]"
                         style={{
                           borderColor: isBetter1 ? COLORS[0] : 'hsl(var(--border))',
                           backgroundColor: isBetter1 ? LIGHT_COLORS[0] : 'hsl(var(--muted))'
                         }}
                       >
-                        <div className="flex items-center justify-center mb-1">
-                          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: COLORS[0] }} />
-                          <span className="text-xs text-muted-foreground">{company1.companyName}</span>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[0] }} />
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">{company1.companyName}</div>
+                          <div className="text-sm font-semibold">{metric.format(value1)}</div>
                         </div>
-                        <div className="text-lg font-semibold">{metric.format(value1)}</div>
                       </div>
+                      
                       <div 
-                        className="p-3 rounded-lg border-2 transition-all"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all min-w-[140px]"
                         style={{
                           borderColor: isBetter2 ? COLORS[1] : 'hsl(var(--border))',
                           backgroundColor: isBetter2 ? LIGHT_COLORS[1] : 'hsl(var(--muted))'
                         }}
                       >
-                        <div className="flex items-center justify-center mb-1">
-                          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: COLORS[1] }} />
-                          <span className="text-xs text-muted-foreground">{company2.companyName}</span>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[1] }} />
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">{company2.companyName}</div>
+                          <div className="text-sm font-semibold">{metric.format(value2)}</div>
                         </div>
-                        <div className="text-lg font-semibold">{metric.format(value2)}</div>
                       </div>
                     </div>
                   </motion.div>
