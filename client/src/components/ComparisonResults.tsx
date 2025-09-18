@@ -272,6 +272,26 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
+                  {metric.sector && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: index * 0.1 + 0.25 }}
+                      className="flex justify-between"
+                    >
+                      <span className="text-sm text-muted-foreground">Sector</span>
+                      <Badge 
+                        variant="outline"
+                        className="text-xs"
+                        style={{ 
+                          borderColor: COLORS[index % COLORS.length],
+                          color: COLORS[index % COLORS.length]
+                        }}
+                      >
+                        {metric.sector}
+                      </Badge>
+                    </motion.div>
+                  )}
                   <motion.div 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}

@@ -4,6 +4,7 @@ export interface Company {
   id: string;
   name: string;
   normalizedName: string;
+  sector?: string;
   createdAt: string;
 }
 
@@ -34,6 +35,16 @@ export interface FinancialMetrics {
   debt?: number;
   rawMetrics: Record<string, any>;
   extractedAt: string;
+  
+  // Market Data Fields
+  sector?: string;
+  currentPrice?: number;
+  weekHigh52?: number;
+  weekLow52?: number;
+  marketCap?: number;
+  dividendYield?: number;
+  eps?: number;
+  peRatio?: number;
 }
 
 export interface ComparisonInsight {
