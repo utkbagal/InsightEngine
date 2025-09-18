@@ -393,10 +393,25 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: getHeaderDelay() + 0.4 }}
-          className="text-muted-foreground mb-4"
+          className="text-muted-foreground mb-2"
         >
           Comprehensive analysis of uploaded financial documents
         </motion.p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: getHeaderDelay() + 0.5 }}
+          className="mb-4"
+        >
+          <div className="flex items-center justify-center">
+            <div className="flex items-center px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertTriangle className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                <strong>Disclaimer:</strong> AI can misinterpret the documents, data extracted might not be accurate due to limitation of AI service used for demo.
+              </p>
+            </div>
+          </div>
+        </motion.div>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
