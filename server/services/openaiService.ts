@@ -298,11 +298,17 @@ export class OpenAIService {
     documents: Array<{ text: string; companyName: string }>,
   ): Promise<DocumentCompatibility[]> {
     const prompt = `
-    Analyze the following financial documents for compatibility. Check if they:
-    1. Belong to the same reporting period (year/quarter)
-    2. Are the same type of financial document (10-K, 10-Q, annual report, etc.)
-    3. Can be meaningfully compared
-
+    Analyze the following financial documents for compatibility. For CROSS-COMPANY comparisons, be more flexible:
+    
+    1. SAME REPORTING PERIOD: Prefer same quarter/year, but allow recent quarters from different companies if within 6 months
+    2. DOCUMENT TYPES: Allow different document types (press releases vs 10-Q vs annual reports) as long as they contain comparable financial metrics
+    3. MEANINGFUL COMPARISON: Focus on whether financial metrics can be extracted and compared
+    
+    **IMPORTANT**: For cross-company analysis, mark documents as compatible if:
+    - Both are quarterly reports (Q1, Q2, Q3, Q4) even if from different fiscal years
+    - Both contain core financial metrics (revenue, net income, etc.)  
+    - Period difference is reasonable for business comparison (within 6 months)
+    
     Return a JSON object with compatibility analysis for each document:
     {
       "documents": [
@@ -312,7 +318,7 @@ export class OpenAIService {
           "year": number,
           "quarter": "string or null",
           "documentType": "string",
-          "issues": ["array of issues if not compatible"]
+          "issues": ["array of issues if not compatible", "or warnings for minor differences"]
         }
       ]
     }
