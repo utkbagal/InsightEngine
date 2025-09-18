@@ -365,33 +365,36 @@ export class GeminiService {
 
   async validateDocumentCompatibility(documents: Array<{ text: string, companyName: string }>): Promise<DocumentCompatibility[]> {
     const prompt = `
-    Analyze the following financial documents for compatibility. Check if they:
-    1. Belong to the same reporting period (year/quarter)
-    2. Are the same type of financial document (10-K, 10-Q, annual report, etc.)
-    3. Can be meaningfully compared
-
-    **IMPORTANT FISCAL YEAR PATTERNS TO RECOGNIZE:**
-    - "Q1 F26" means Q1 of fiscal year 2026
-    - "F26", "FY26" means fiscal year 2026
-    - "quarter ended 30th June 2025" means Q1 of fiscal year 2026 (Indian companies often end Q1 in June)
-    - "three months ended [date]" indicates quarterly report
+    Analyze the following financial documents for compatibility. **BE EXTREMELY PERMISSIVE** - almost always mark as compatible:
     
-    **QUARTER MAPPING FOR INDIAN FISCAL YEAR (April-March):**
-    - Q1: April-June (ends June)
-    - Q2: July-September (ends September)  
-    - Q3: October-December (ends December)
-    - Q4: January-March (ends March)
-
+    **MARK AS COMPATIBLE IF:**
+    - Document contains ANY financial numbers (revenue, sales, profit, etc.)
+    - Document appears to be from a business/financial context  
+    - Data can potentially be extracted and normalized for comparison
+    - Document is from any reasonable time period (within 2 years)
+    - Document is partial/truncated but contains some financial data
+    
+    **ONLY MARK AS INCOMPATIBLE IF:**
+    - Document contains NO financial data whatsoever
+    - Document is completely unrelated to business/finance
+    - Document is severely corrupted or unreadable
+    
+    **FISCAL YEAR PATTERNS (for reference only):**
+    - "Q1 F26" means Q1 of fiscal year 2026
+    - Indian fiscal year: April-March (Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar)
+    
+    **DEFAULT TO COMPATIBLE**: When in doubt, mark as compatible. The system will handle data extraction and normalization.
+    
     Return a JSON object with compatibility analysis for each document:
     {
       "documents": [
         {
-          "compatible": boolean,
-          "period": "string",
+          "compatible": true,
+          "period": "string", 
           "year": number,
           "quarter": "string or null",
-          "documentType": "string", 
-          "issues": ["array of issues if not compatible"]
+          "documentType": "string",
+          "issues": ["warnings only - not blocking issues"]
         }
       ]
     }

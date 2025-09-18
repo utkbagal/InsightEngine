@@ -298,27 +298,31 @@ export class OpenAIService {
     documents: Array<{ text: string; companyName: string }>,
   ): Promise<DocumentCompatibility[]> {
     const prompt = `
-    Analyze the following financial documents for compatibility. For CROSS-COMPANY comparisons, be more flexible:
+    Analyze the following financial documents for compatibility. **BE VERY PERMISSIVE** - mark as compatible unless truly impossible to compare:
     
-    1. SAME REPORTING PERIOD: Prefer same quarter/year, but allow recent quarters from different companies if within 6 months
-    2. DOCUMENT TYPES: Allow different document types (press releases vs 10-Q vs annual reports) as long as they contain comparable financial metrics
-    3. MEANINGFUL COMPARISON: Focus on whether financial metrics can be extracted and compared
+    **MARK AS COMPATIBLE IF:**
+    - Document contains ANY financial numbers (revenue, sales, profit, etc.)
+    - Document appears to be from a business/financial context
+    - Data can potentially be extracted and normalized for comparison
+    - Document is from any reasonable time period (within 2 years)
     
-    **IMPORTANT**: For cross-company analysis, mark documents as compatible if:
-    - Both are quarterly reports (Q1, Q2, Q3, Q4) even if from different fiscal years
-    - Both contain core financial metrics (revenue, net income, etc.)  
-    - Period difference is reasonable for business comparison (within 6 months)
+    **ONLY MARK AS INCOMPATIBLE IF:**
+    - Document contains NO financial data whatsoever
+    - Document is completely unrelated to business/finance
+    - Document is severely corrupted or unreadable
+    
+    **ALWAYS PREFER EXTRACTION**: Focus on data extraction and unit normalization rather than strict compatibility. Different document types, periods, currencies, and formats are acceptable - the system will handle normalization.
     
     Return a JSON object with compatibility analysis for each document:
     {
       "documents": [
         {
-          "compatible": boolean,
+          "compatible": true,
           "period": "string",
           "year": number,
           "quarter": "string or null",
           "documentType": "string",
-          "issues": ["array of issues if not compatible", "or warnings for minor differences"]
+          "issues": ["warnings only - not blocking issues"]
         }
       ]
     }
