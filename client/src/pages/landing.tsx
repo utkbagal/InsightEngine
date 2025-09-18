@@ -1,13 +1,20 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChartLine, FileText, Brain, BarChart3, Rocket } from "lucide-react";
+import { ChartLine, FileText, Brain, BarChart3, Rocket, Upload, Zap, Download, Mail, User } from "lucide-react";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
 
   const handleStartComparison = () => {
     setLocation("/compare");
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   return (
@@ -21,15 +28,27 @@ export default function LandingPage() {
               <span className="text-2xl font-bold text-primary">FinCompare</span>
             </div>
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+              <button 
+                onClick={() => scrollToSection('features')} 
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                data-testid="nav-features"
+              >
                 Features
-              </a>
-              <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+              </button>
+              <button 
+                onClick={() => scrollToSection('how-it-works')} 
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                data-testid="nav-how-it-works"
+              >
                 How it Works
-              </a>
-              <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              </button>
+              <button 
+                onClick={() => scrollToSection('contact')} 
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                data-testid="nav-contact"
+              >
                 Contact
-              </a>
+              </button>
             </nav>
           </div>
         </div>
@@ -64,7 +83,7 @@ export default function LandingPage() {
           </Card>
 
           {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-8 mt-16">
+          <div id="features" className="grid md:grid-cols-3 gap-8 mt-16 scroll-mt-20">
             <Card className="shadow-sm" data-testid="card-feature-formats">
               <CardContent className="p-6">
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
@@ -98,6 +117,100 @@ export default function LandingPage() {
                 <p className="text-muted-foreground text-sm">
                   Generate comparison tables, charts, and export reports in multiple formats.
                 </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works Section */}
+      <section id="how-it-works" className="bg-white py-20 scroll-mt-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-4xl mx-auto">
+            <h2 className="text-4xl font-bold text-foreground mb-12">How it Works</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              <Card className="shadow-sm" data-testid="card-step-upload">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <Upload className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">1. Upload Documents</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Upload financial documents (PDFs, HTML, CSV) from 2-4 companies you want to compare.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm" data-testid="card-step-analyze">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <Zap className="h-6 w-6 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">2. AI Analysis</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Our AI extracts key financial metrics, normalizes data formats, and enriches with market data.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm" data-testid="card-step-insights">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <Download className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">3. Get Insights</h3>
+                  <p className="text-muted-foreground text-sm">
+                    View side-by-side comparisons, visual charts, and export detailed reports for decision making.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="bg-gradient-to-br from-gray-50 to-gray-100 py-20 scroll-mt-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-foreground mb-12">Get in Touch</h2>
+            
+            <Card className="shadow-lg" data-testid="card-contact">
+              <CardContent className="p-8">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center space-x-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-xl font-semibold text-foreground" data-testid="text-contact-name">
+                        Utkarsh Bagal
+                      </h3>
+                      <p className="text-muted-foreground">Developer & Financial Analyst</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Mail className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <a 
+                        href="mailto:utkarshs@hexaware.com" 
+                        className="text-lg font-medium text-primary hover:underline"
+                        data-testid="link-contact-email"
+                      >
+                        utkarshs@hexaware.com
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <p className="text-muted-foreground text-center mt-6">
+                    Have questions about FinCompare or need help with financial document analysis? 
+                    Feel free to reach out!
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
