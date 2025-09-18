@@ -9,6 +9,7 @@ import { documentProcessor } from "./services/documentProcessor";
 import { kpiNormalizer } from "./services/kpiNormalizer";
 import { webEnrichmentService, type EnrichedMetrics } from "./services/webEnrichmentService";
 import { marketDataService, type MarketDataResult } from "./services/marketDataService";
+import { webDataCache } from "./services/webDataCache";
 import { insertCompanySchema, insertDocumentSchema, insertFinancialMetricsSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -20,12 +21,19 @@ const upload = multer({
 });
 
 /**
- * Search for financial data on the web using web search
+ * Search for financial data on the web using web search with caching
  * Note: This function should be enhanced to use actual web search tools when available
  */
 async function searchFinancialDataWeb(query: string): Promise<string | null> {
   try {
     console.log(`Web search query: ${query}`);
+    
+    // Check cache first to avoid rate limits
+    const cachedResult = await webDataCache.get(query);
+    if (cachedResult !== null) {
+      console.log(`Using cached data for query: ${query.slice(0, 50)}...`);
+      return cachedResult;
+    }
     
     // For now, simulate realistic market data based on company patterns
     // In a real implementation, this would use actual web search or financial APIs
@@ -34,8 +42,10 @@ async function searchFinancialDataWeb(query: string): Promise<string | null> {
     
     // Generate realistic-looking market data for demonstration
     // This is temporary until proper web search integration is available
+    let result: string;
+    
     if (companyName.toLowerCase().includes('maruti') || companyName.toLowerCase().includes('suzuki')) {
-      return `
+      result = `
         Maruti Suzuki India Limited Stock Information:
         Current Price: ₹11,245.50 ($135.12)
         Market Cap: ₹339,867 crores ($40.8B)
@@ -49,7 +59,7 @@ async function searchFinancialDataWeb(query: string): Promise<string | null> {
         Last Updated: ${new Date().toISOString()}
       `;
     } else if (companyName.toLowerCase().includes('tata') && companyName.toLowerCase().includes('motor')) {
-      return `
+      result = `
         Tata Motors Limited Stock Information:
         Current Price: ₹784.35 ($9.42)
         Market Cap: ₹289,456 crores ($34.7B)
@@ -63,7 +73,7 @@ async function searchFinancialDataWeb(query: string): Promise<string | null> {
         Last Updated: ${new Date().toISOString()}
       `;
     } else if (companyName.toLowerCase().includes('mahindra') || companyName.toLowerCase().includes('m&m')) {
-      return `
+      result = `
         Mahindra & Mahindra Limited Stock Information:
         Current Price: ₹2,934.80 ($35.25)
         Market Cap: ₹258,934 crores ($31.1B)
@@ -76,18 +86,25 @@ async function searchFinancialDataWeb(query: string): Promise<string | null> {
         Industry: SUVs & Tractors
         Last Updated: ${new Date().toISOString()}
       `;
+    } else {
+      // Default fallback for other companies
+      result = `
+        ${companyName} Financial Information:
+        Sector: Technology & Services
+        Industry: Diversified
+        Note: Detailed market data requires live financial API integration
+        Last Updated: ${new Date().toISOString()}
+      `;
     }
     
-    // Default fallback for other companies
-    return `
-      ${companyName} Financial Information:
-      Sector: Technology & Services
-      Industry: Diversified
-      Note: Detailed market data requires live financial API integration
-      Last Updated: ${new Date().toISOString()}
-    `;
+    // Store the result in cache before returning
+    await webDataCache.set(query, result);
+    console.log(`Cached web data for query: ${query.slice(0, 50)}...`);
+    
+    return result;
   } catch (error) {
     console.error('Web search error:', error);
+    // Don't cache error results - return null directly
     return null;
   }
 }
@@ -843,6 +860,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Export error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to export comparison' });
+    }
+  });
+
+  // Web data cache statistics endpoint (optional monitoring)
+  app.get('/api/cache/stats', async (req, res) => {
+    try {
+      const stats = webDataCache.getStats();
+      res.json({
+        status: 'active',
+        ...stats,
+        description: 'Web data cache for market data fetching rate limit avoidance'
+      });
+    } catch (error) {
+      console.error('Cache stats error:', error);
+      res.status(500).json({ error: 'Failed to get cache statistics' });
     }
   });
 
