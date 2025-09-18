@@ -7,6 +7,7 @@ export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   normalizedName: text("normalized_name").notNull(),
+  sector: text("sector"), // Company industry sector (e.g., "Automotive", "Technology")
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 
@@ -77,6 +78,12 @@ export const financialMetrics = pgTable("financial_metrics", {
   peRatio: real("pe_ratio"),
   pbRatio: real("pb_ratio"),
   marketCap: real("market_cap"), // in billions USD
+  
+  // Market Data (requires web search/API)
+  currentPrice: real("current_price"), // Current market price (USD)
+  weekHigh52: real("week_high_52"), // 52-week high (USD)
+  weekLow52: real("week_low_52"), // 52-week low (USD)
+  dividendYield: real("dividend_yield"), // Dividend yield percentage
   
   // Data Quality and Sources
   extractionConfidence: real("extraction_confidence"), // 0-1 score
