@@ -232,13 +232,7 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
         </div>
       </div>
 
-      {/* Key Visual Comparisons First */}
-      {renderDirectComparison()}
-      
-      {/* Enhanced Visual Comparison - moved up */}
-      <EnhancedVisualComparison metrics={result.metrics} />
-
-      {/* Company Overview Cards with Animations */}
+      {/* Company Overview Cards with Animations - moved to top */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {result.metrics.map((metric, index) => (
           <motion.div
@@ -311,6 +305,12 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
           </motion.div>
         ))}
       </div>
+
+      {/* Key Visual Comparisons */}
+      {renderDirectComparison()}
+      
+      {/* Enhanced Visual Comparison */}
+      <EnhancedVisualComparison metrics={result.metrics} />
 
       {/* Key Insights Panel with Animations */}
       <motion.div
