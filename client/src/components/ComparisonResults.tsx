@@ -43,6 +43,16 @@ interface ComparisonResultsProps {
 export default function ComparisonResults({ result, onNewComparison }: ComparisonResultsProps) {
   const { toast } = useToast();
 
+  // Progressive typing animation configuration
+  const TYPING_DELAY = 0.15; // Base delay between elements
+  const SECTION_DELAY = 0.8; // Delay between sections
+  
+  // Calculate staggered delays for different sections
+  const getCardDelay = (index: number) => 0.8 + (index * TYPING_DELAY);
+  const getMetricDelay = (index: number) => 1.8 + (index * TYPING_DELAY);
+  const getInsightDelay = (index: number) => 3.2 + (index * TYPING_DELAY);
+  const getHeaderDelay = () => 0.3;
+
   const handleExportCSV = async () => {
     try {
       const csvData = await api.exportComparison(result.comparison.id);
@@ -364,11 +374,35 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
 
   return (
     <div className="fade-in">
-      {/* Results Header */}
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-4">Financial Comparison Results</h2>
-        <p className="text-muted-foreground mb-4">Comprehensive analysis of uploaded financial documents</p>
-        <div className="flex justify-center space-x-4">
+      {/* Results Header with typing effect */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: getHeaderDelay() }}
+        className="text-center mb-8"
+      >
+        <motion.h2 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: getHeaderDelay() + 0.2 }}
+          className="text-3xl font-bold text-foreground mb-4"
+        >
+          Financial Comparison Results
+        </motion.h2>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: getHeaderDelay() + 0.4 }}
+          className="text-muted-foreground mb-4"
+        >
+          Comprehensive analysis of uploaded financial documents
+        </motion.p>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: getHeaderDelay() + 0.6 }}
+          className="flex justify-center space-x-4"
+        >
           <Button onClick={handleExportCSV} variant="default" data-testid="button-export-csv">
             <Download className="mr-2 h-4 w-4" />
             Export CSV
@@ -377,18 +411,29 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
             <Share className="mr-2 h-4 w-4" />
             Share Report
           </Button>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* Company Overview Cards with Animations - moved to top */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      {/* Company Overview Cards with progressive typing effect */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.8 }}
+        className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+      >
         {result.metrics.map((metric, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            whileHover={{ scale: 1.02, y: -5 }}
+            initial={{ opacity: 0, scale: 0.8, rotateY: -15 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            transition={{ 
+              duration: 0.6, 
+              delay: getCardDelay(index),
+              type: "spring",
+              stiffness: 100,
+              damping: 15
+            }}
+            whileHover={{ scale: 1.02, y: -5, rotateY: 5 }}
           >
             <Card 
               className="shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4" 
@@ -472,19 +517,25 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
             </Card>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Key Visual Comparisons */}
       {renderDirectComparison()}
       
-      {/* Enhanced Visual Comparison */}
-      <EnhancedVisualComparison metrics={result.metrics} />
-
-      {/* Key Insights Panel with Animations */}
+      {/* Enhanced Visual Comparison with delayed appearance */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.8, delay: 2.0 }}
+      >
+        <EnhancedVisualComparison metrics={result.metrics} />
+      </motion.div>
+
+      {/* Key Insights Panel with progressive typing animations */}
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.7, delay: 2.4 }}
       >
         <Card className="bg-gradient-to-r from-primary/5 to-accent/5 mb-8 shadow-lg" data-testid="card-insights-panel">
           <CardHeader>
@@ -512,10 +563,16 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                 return (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 + 0.4 }}
-                    whileHover={{ scale: 1.05, y: -2 }}
+                    initial={{ opacity: 0, scale: 0.8, rotateX: -15 }}
+                    animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+                    transition={{ 
+                      duration: 0.5, 
+                      delay: getInsightDelay(index),
+                      type: "spring",
+                      stiffness: 120,
+                      damping: 12
+                    }}
+                    whileHover={{ scale: 1.05, y: -3, rotateX: 2 }}
                   >
                     <Card 
                       className="border-2 transition-all duration-300" 
@@ -566,8 +623,13 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
         </Card>
       </motion.div>
 
-      {/* Comparison Table */}
-      <Card className="shadow-sm overflow-hidden mb-8" data-testid="card-comparison-table">
+      {/* Comparison Table with typing effect */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 3.8 }}
+      >
+        <Card className="shadow-sm overflow-hidden mb-8" data-testid="card-comparison-table">
         <CardHeader className="border-b border-border">
           <CardTitle>Financial Metrics Comparison</CardTitle>
           <p className="text-sm text-muted-foreground">Side-by-side comparison of key financial indicators</p>
@@ -802,20 +864,36 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
           </table>
         </div>
       </Card>
+      </motion.div>
 
-      {/* Action Buttons */}
-      <div className="text-center">
+      {/* Action Buttons with final typing effect */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 4.2 }}
+        className="text-center"
+      >
         <div className="inline-flex space-x-4">
-          <Button variant="outline" onClick={onNewComparison} data-testid="button-new-comparison">
-            <Plus className="mr-2 h-4 w-4" />
-            New Comparison
-          </Button>
-          <Button onClick={handleExportCSV} data-testid="button-download-report">
-            <Download className="mr-2 h-4 w-4" />
-            Download Report
-          </Button>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button variant="outline" onClick={onNewComparison} data-testid="button-new-comparison">
+              <Plus className="mr-2 h-4 w-4" />
+              New Comparison
+            </Button>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button onClick={handleExportCSV} data-testid="button-download-report">
+              <Download className="mr-2 h-4 w-4" />
+              Download Report
+            </Button>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
