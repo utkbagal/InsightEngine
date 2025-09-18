@@ -244,6 +244,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const compatibility = await openaiService.validateDocumentCompatibility(documents);
       
+      // Log detailed compatibility results for debugging
+      console.log('Detailed compatibility analysis results:', JSON.stringify(compatibility, null, 2));
+      
       const allCompatible = compatibility.every(comp => comp.compatible);
       const issues = compatibility.flatMap(comp => comp.issues);
 
