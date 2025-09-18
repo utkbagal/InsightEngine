@@ -155,7 +155,7 @@ export class OpenAIService {
             content: prompt
           }
         ],
-        max_tokens: 100
+        max_completion_tokens: 100
       });
 
       const result = response.choices[0].message.content?.trim();
@@ -260,7 +260,7 @@ export class OpenAIService {
           },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       });
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
