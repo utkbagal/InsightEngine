@@ -238,10 +238,10 @@ class DatabaseStorage implements IStorage {
     this.db = drizzle(pool);
     
     // Setup session store for basic authentication (blueprint: javascript_auth_all_persistance)
-    const PostgresSessionStore = connectPg(session);
-    this.sessionStore = new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true 
+    // Use memory store for sessions to avoid database table conflicts
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // 24 hours
     });
   }
 
