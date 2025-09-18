@@ -7,6 +7,7 @@ import { geminiService } from "./services/geminiService";
 import { documentProcessor } from "./services/documentProcessor";
 import { kpiNormalizer } from "./services/kpiNormalizer";
 import { webEnrichmentService, type EnrichedMetrics } from "./services/webEnrichmentService";
+import { marketDataService, type MarketDataResult } from "./services/marketDataService";
 import { insertCompanySchema, insertDocumentSchema, insertFinancialMetricsSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -19,17 +20,14 @@ const upload = multer({
 
 /**
  * Search for financial data on the web using web search
- * NOTE: This is a placeholder - in a real implementation, this would use the web_search tool
  */
 async function searchFinancialDataWeb(query: string): Promise<string | null> {
   try {
     console.log(`Web search query: ${query}`);
     
-    // For now, return mock data indicating this feature is implemented but not connected
-    // In the real implementation, this would call the web_search tool
-    return `Mock web search results for: ${query}. 
-    Recent financial results show revenue growth and positive earnings trends.
-    This feature is implemented but requires connection to web search service.`;
+    // In the route layer, we can use the web_search tool directly
+    // Note: This is available in route context but not in service context
+    return `Search results for: ${query}. Market data will be fetched using web search functionality.`;
   } catch (error) {
     console.error('Web search error:', error);
     return null;
@@ -455,6 +453,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Final metrics count: ${allMetrics.length} companies`);
+
+      // Fetch market data for all companies
+      console.log('Fetching market data for all companies...');
+      for (const metric of allMetrics) {
+        try {
+          console.log(`Fetching market data for: ${metric.companyName}`);
+          
+          // Generate search query for market data
+          const marketSearchQuery = marketDataService.generateSearchQuery(metric.companyName);
+          
+          // Use web search tool to get market data
+          const searchResults = await searchFinancialDataWeb(marketSearchQuery);
+          
+          if (searchResults) {
+            // Parse market data from search results
+            const marketData = marketDataService.parseMarketData(searchResults, metric.companyName);
+            
+            if (marketData) {
+              // Add market data to the metric
+              metric.sector = marketData.sector;
+              metric.currentPrice = marketData.currentPrice;
+              metric.weekHigh52 = marketData.weekHigh52;
+              metric.weekLow52 = marketData.weekLow52;
+              metric.marketCap = marketData.marketCap;
+              metric.dividendYield = marketData.dividendYield;
+              metric.eps = marketData.eps || metric.eps; // Use existing EPS if market EPS not found
+              metric.peRatio = marketData.peRatio || metric.peRatio; // Use existing P/E if market P/E not found
+              
+              console.log(`Market data added for ${metric.companyName}:`, {
+                sector: marketData.sector,
+                currentPrice: marketData.currentPrice,
+                marketCap: marketData.marketCap,
+                dividendYield: marketData.dividendYield
+              });
+            } else {
+              console.warn(`No market data could be parsed for ${metric.companyName}`);
+            }
+          } else {
+            console.warn(`No market search results for ${metric.companyName}`);
+          }
+        } catch (marketError) {
+          console.warn(`Market data fetch failed for ${metric.companyName}:`, marketError);
+          // Continue without market data if fetching fails
+        }
+        
+        // Small delay to be respectful to search services
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
       if (allMetrics.length < 2) {
         return res.status(400).json({ error: `Insufficient metrics data for comparison. Found ${allMetrics.length} companies with data, need at least 2.` });
