@@ -440,9 +440,8 @@ export class OpenAIService {
           return await geminiService.generateComparisonInsights(metrics);
         } catch (geminiError) {
           console.error('Gemini fallback also failed:', geminiError);
-          throw new Error(
-            this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'comparison insights generation')
-          );
+          console.log('Both AI services failed, generating basic comparison insights without AI');
+          return this.generateBasicInsights(metrics);
         }
       }
       
@@ -451,6 +450,109 @@ export class OpenAIService {
         this.sanitizeErrorMessage(error instanceof Error ? error : new Error('Unknown error'), 'comparison insights generation')
       );
     }
+  }
+
+  /**
+   * Generate basic insights without AI when both services are unavailable
+   */
+  private generateBasicInsights(metrics: ExtractedMetrics[]): ComparisonInsights {
+    console.log('Generating basic comparison insights without AI for', metrics.length, 'companies');
+    
+    const insights: Array<{
+      type: "revenue" | "profitability" | "growth" | "risk" | "efficiency";
+      title: string;
+      description: string;
+      impact: "positive" | "negative" | "neutral";
+      companies: string[];
+    }> = [];
+    
+    if (metrics.length < 2) {
+      return {
+        insights: [],
+        summary: "Insufficient data for comparison analysis."
+      };
+    }
+
+    const companiesWithData = metrics.filter(m => m.revenue !== null && m.revenue !== undefined);
+    
+    // Revenue comparison
+    if (companiesWithData.length >= 2) {
+      const sortedByRevenue = [...companiesWithData].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+      const highest = sortedByRevenue[0];
+      const lowest = sortedByRevenue[sortedByRevenue.length - 1];
+      
+      if (highest && lowest && highest.revenue && lowest.revenue) {
+        const revenueDiff = ((highest.revenue - lowest.revenue) / lowest.revenue * 100).toFixed(1);
+        insights.push({
+          type: "revenue",
+          title: "Revenue Leadership",
+          description: `${highest.companyName} leads with ${highest.revenue}B in revenue, ${revenueDiff}% higher than ${lowest.companyName} (${lowest.revenue}B).`,
+          impact: "positive",
+          companies: [highest.companyName, lowest.companyName]
+        });
+      }
+    }
+
+    // Profitability comparison
+    const companiesWithProfit = metrics.filter(m => m.netIncome !== null && m.netIncome !== undefined);
+    if (companiesWithProfit.length >= 2) {
+      const sortedByProfit = [...companiesWithProfit].sort((a, b) => (b.netIncome || 0) - (a.netIncome || 0));
+      const mostProfitable = sortedByProfit[0];
+      const leastProfitable = sortedByProfit[sortedByProfit.length - 1];
+      
+      if (mostProfitable && leastProfitable && mostProfitable.netIncome && leastProfitable.netIncome) {
+        insights.push({
+          type: "profitability", 
+          title: "Profitability Analysis",
+          description: `${mostProfitable.companyName} shows highest profitability with ${mostProfitable.netIncome}B net income vs ${leastProfitable.companyName}'s ${leastProfitable.netIncome}B.`,
+          impact: mostProfitable.netIncome > 0 ? "positive" : "neutral",
+          companies: [mostProfitable.companyName, leastProfitable.companyName]
+        });
+      }
+    }
+
+    // Growth analysis
+    const companiesWithGrowth = metrics.filter(m => m.yoyGrowth !== null && m.yoyGrowth !== undefined);
+    if (companiesWithGrowth.length >= 2) {
+      const sortedByGrowth = [...companiesWithGrowth].sort((a, b) => (b.yoyGrowth || 0) - (a.yoyGrowth || 0));
+      const fastestGrowing = sortedByGrowth[0];
+      
+      if (fastestGrowing && fastestGrowing.yoyGrowth) {
+        insights.push({
+          type: "growth",
+          title: "Growth Performance", 
+          description: `${fastestGrowing.companyName} shows strongest growth momentum at ${fastestGrowing.yoyGrowth}% year-over-year.`,
+          impact: fastestGrowing.yoyGrowth > 0 ? "positive" : "negative",
+          companies: [fastestGrowing.companyName]
+        });
+      }
+    }
+
+    // EBITDA comparison if available
+    const companiesWithEbitda = metrics.filter(m => m.ebitda !== null && m.ebitda !== undefined);
+    if (companiesWithEbitda.length >= 2) {
+      const sortedByEbitda = [...companiesWithEbitda].sort((a, b) => (b.ebitda || 0) - (a.ebitda || 0));
+      const highest = sortedByEbitda[0];
+      
+      if (highest && highest.ebitda) {
+        insights.push({
+          type: "efficiency",
+          title: "Operational Efficiency",
+          description: `${highest.companyName} shows strong operational performance with ${highest.ebitda}B EBITDA, indicating efficient business operations.`,
+          impact: "positive", 
+          companies: [highest.companyName]
+        });
+      }
+    }
+
+    // Generate summary
+    const companyNames = metrics.map(m => m.companyName).join(", ");
+    const summary = `Basic comparison analysis for ${companyNames}. ${insights.length} key insights identified across revenue, profitability, and growth metrics. Note: This analysis was generated using simplified calculations when advanced AI analysis was unavailable.`;
+
+    return {
+      insights,
+      summary
+    };
   }
 }
 
