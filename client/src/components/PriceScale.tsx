@@ -16,7 +16,7 @@ export default function PriceScale({
   className = "" 
 }: PriceScaleProps) {
   // Return placeholder if data is missing
-  if (!currentPrice || !weekHigh52 || !weekLow52) {
+  if (currentPrice == null || weekHigh52 == null || weekLow52 == null) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
         <span className="text-xs text-muted-foreground">Price data not available</span>

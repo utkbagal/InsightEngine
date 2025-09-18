@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 import EnhancedVisualComparison from "@/components/EnhancedVisualComparison";
+import PriceScale from "@/components/PriceScale";
 import { 
   Download, 
   Share, 
@@ -121,6 +122,33 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
     return `${value.toFixed(1)}%`;
   };
 
+  const formatLargeNumber = (value?: number | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    if (value >= 1000000000) {
+      return `$${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(1)}K`;
+    }
+    return `$${value.toFixed(0)}`;
+  };
+
+  const formatNumber = (value?: number | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    return value.toFixed(2);
+  };
+
+  const formatPrice = (value?: number | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `$${value.toFixed(2)}`;
+  };
+
+  const formatEPS = (value?: number | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `$${value.toFixed(2)}`;
+  };
+
   const calculateDifference = (val1?: number | null, val2?: number | null) => {
     if (!val1 || !val2) return { text: 'N/A', isPositive: null };
     const diff = ((val1 - val2) / val2) * 100;
@@ -134,11 +162,22 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
     if (result.metrics.length !== 2) return null;
     
     const [company1, company2] = result.metrics;
-    const metrics = [
+    
+    // Fundamental metrics (from documents)
+    const fundamentalMetrics = [
       { key: 'revenue', label: 'Revenue', format: formatCurrency },
       { key: 'netIncome', label: 'Net Income', format: formatCurrency },
       { key: 'profitMargin', label: 'Profit Margin', format: formatPercent },
       { key: 'yoyGrowth', label: 'YoY Growth', format: formatPercent }
+    ];
+
+    // Market data metrics (from live market data)
+    const marketMetrics = [
+      { key: 'currentPrice', label: 'Current Price', format: formatPrice, compareLogic: 'neutral' },
+      { key: 'marketCap', label: 'Market Cap', format: formatLargeNumber, compareLogic: 'neutral' },
+      { key: 'dividendYield', label: 'Dividend Yield', format: formatPercent, compareLogic: 'higher' },
+      { key: 'eps', label: 'EPS', format: formatEPS, compareLogic: 'higher' },
+      { key: 'peRatio', label: 'P/E Ratio', format: formatNumber, compareLogic: 'lower' }
     ];
     
     return (
@@ -154,8 +193,37 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
             <p className="text-center text-muted-foreground">Side-by-side key metrics</p>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="space-y-4">
-              {metrics.map((metric, index) => {
+            {/* 52-Week Price Scale for both companies */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-center">{company1.companyName}</h4>
+                <PriceScale 
+                  currentPrice={company1.currentPrice}
+                  weekHigh52={company1.weekHigh52}
+                  weekLow52={company1.weekLow52}
+                  companyColor={COLORS[0]}
+                />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-center">{company2.companyName}</h4>
+                <PriceScale 
+                  currentPrice={company2.currentPrice}
+                  weekHigh52={company2.weekHigh52}
+                  weekLow52={company2.weekLow52}
+                  companyColor={COLORS[1]}
+                />
+              </div>
+            </div>
+
+            {/* Fundamental Metrics */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Fundamental Metrics
+                </h3>
+                <div className="space-y-4">
+                  {fundamentalMetrics.map((metric, index) => {
                 const value1 = company1[metric.key as keyof typeof company1] as number;
                 const value2 = company2[metric.key as keyof typeof company2] as number;
                 const isBetter1 = (value1 || 0) > (value2 || 0);
@@ -206,7 +274,83 @@ export default function ComparisonResults({ result, onNewComparison }: Compariso
                     </div>
                   </motion.div>
                 );
-              })}
+                  })}
+                </div>
+              </div>
+
+              {/* Market Metrics */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2" />
+                  Market Metrics
+                </h3>
+                <div className="space-y-4">
+                  {marketMetrics.map((metric, index) => {
+                    const value1 = company1[metric.key as keyof typeof company1] as number;
+                    const value2 = company2[metric.key as keyof typeof company2] as number;
+                    
+                    // Only compare when both values are valid numbers
+                    let isBetter1 = false;
+                    let isBetter2 = false;
+                    
+                    if (value1 != null && value2 != null && metric.compareLogic !== 'neutral') {
+                      if (metric.compareLogic === 'higher') {
+                        isBetter1 = value1 > value2;
+                        isBetter2 = value2 > value1;
+                      } else if (metric.compareLogic === 'lower') {
+                        isBetter1 = value1 < value2;
+                        isBetter2 = value2 < value1;
+                      }
+                    }
+                    
+                    return (
+                      <motion.div
+                        key={metric.key}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: (fundamentalMetrics.length + index) * 0.1 }}
+                        className="flex items-center justify-between py-3 border-b border-muted last:border-b-0"
+                      >
+                        {/* Metric Name on Left */}
+                        <div className="w-1/3">
+                          <h4 className="text-sm font-medium text-muted-foreground">{metric.label}</h4>
+                        </div>
+                        
+                        {/* Company Values on Right - Horizontally */}
+                        <div className="flex space-x-4 w-2/3 justify-end">
+                          <div 
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all min-w-[140px]"
+                            style={{
+                              borderColor: isBetter1 ? COLORS[0] : 'hsl(var(--border))',
+                              backgroundColor: isBetter1 ? LIGHT_COLORS[0] : 'hsl(var(--muted))'
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[0] }} />
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground">{company1.companyName}</div>
+                              <div className="text-sm font-semibold">{metric.format(value1)}</div>
+                            </div>
+                          </div>
+                          
+                          <div 
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all min-w-[140px]"
+                            style={{
+                              borderColor: isBetter2 ? COLORS[1] : 'hsl(var(--border))',
+                              backgroundColor: isBetter2 ? LIGHT_COLORS[1] : 'hsl(var(--muted))'
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[1] }} />
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground">{company2.companyName}</div>
+                              <div className="text-sm font-semibold">{metric.format(value2)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
