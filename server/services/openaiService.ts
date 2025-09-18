@@ -1,13 +1,16 @@
 import OpenAI from "openai";
 import { geminiService } from "./geminiService";
 
-// Using Azure OpenAI API
+// Using Azure OpenAI API (2025 v1 format)
 const openai = new OpenAI({
   apiKey:
     process.env.OPENAI_API_KEY ||
     process.env.OPENAI_API_KEY_ENV_VAR ||
     "default_key",
-  baseURL: "https://secureapi-aoai-eastus.openai.azure.com/openai/responses?api-version=2025-04-01-preview",
+  baseURL: "https://secureapi-aoai-eastus.openai.azure.com/openai/v1/",
+  defaultHeaders: {
+    'api-key': process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key",
+  },
 });
 
 export interface ExtractedMetrics {
