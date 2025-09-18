@@ -199,6 +199,18 @@ export class KPINormalizer {
         issues: [`Abbreviation match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
       };
     }
+
+    // Check for initial letters match (e.g., "M&M" = "Mahindra & Mahindra")
+    const isInitialLettersMatch = this.checkInitialLettersMatch(userEnteredName, aiExtractedName);
+    if (isInitialLettersMatch) {
+      return {
+        isMatch: true,
+        confidence: 0.8, // High confidence for initial letters match
+        userNormalized: aiNormalized, // Use document name as normalized version
+        aiNormalized,
+        issues: [`Initial letters match detected. User: "${userEnteredName}", Document: "${aiExtractedName}"`]
+      };
+    }
     
     // Final check - if user input is substring of document name, accept it
     if (aiNormalized.includes(userNormalized) || userNormalized.includes(aiNormalized)) {
@@ -273,6 +285,39 @@ export class KPINormalizer {
           }
         }
       }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if user input represents first letters of company words (e.g., "M&M" = "Mahindra & Mahindra")
+   */
+  private checkInitialLettersMatch(userEnteredName: string, aiExtractedName: string): boolean {
+    // Remove non-alphabetic characters and get individual letters
+    const userLetters = userEnteredName.replace(/[^a-zA-Z]/g, '').toLowerCase().split('');
+    
+    // Get first letters of significant words from AI name (filter out common words)
+    const commonWords = ['ltd', 'limited', 'inc', 'incorporated', 'corp', 'corporation', 'co', 'company', 'llc'];
+    const aiWords = aiExtractedName.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 0 && !commonWords.includes(word));
+    
+    const aiFirstLetters = aiWords.map(word => word.charAt(0));
+    
+    // Check if user letters match the first letters of AI words
+    if (userLetters.length >= 2 && userLetters.length <= aiFirstLetters.length) {
+      let matches = 0;
+      for (let i = 0; i < userLetters.length; i++) {
+        if (i < aiFirstLetters.length && userLetters[i] === aiFirstLetters[i]) {
+          matches++;
+        }
+      }
+      
+      // Require at least 80% of letters to match
+      const matchRatio = matches / userLetters.length;
+      return matchRatio >= 0.8;
     }
     
     return false;
