@@ -155,7 +155,6 @@ export class OpenAIService {
             content: prompt
           }
         ],
-        temperature: 0.1,
         max_tokens: 100
       });
 
@@ -261,7 +260,6 @@ export class OpenAIService {
           },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.1,
         max_tokens: 2000,
       });
 
@@ -338,7 +336,6 @@ export class OpenAIService {
           },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.1,
       });
 
       const result = JSON.parse(
@@ -417,7 +414,6 @@ export class OpenAIService {
           },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.3,
       });
 
       const result = JSON.parse(
