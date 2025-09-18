@@ -216,6 +216,19 @@ export class OpenAIService {
     **DEBT** (look for):
     - "Total debt", "Long-term debt", "Short-term debt", "Borrowings", "Total borrowings"
     
+    **PAT (PROFIT AFTER TAX)** (look for):
+    - "Profit after tax", "PAT", "Net income after tax", "Earnings after tax", "Profit for the period"
+    - This is essentially the same as net income but search for both terms
+    
+    **EBITDA** (look for):
+    - "EBITDA", "Earnings before interest, taxes, depreciation and amortization"
+    - "Operating income", "Operating earnings", "EBIT" (add back depreciation if available)
+    
+    **SALES VOLUME** (look for):
+    - "Units sold", "Volume", "Sales volume", "Quantity sold", "Number of units"
+    - "Vehicles sold", "Products sold", "Total sales units"
+    - May be in millions/thousands of units
+    
     **IMPORTANT INSTRUCTIONS**:
     1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
     2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using approximate rate 1 USD = 83 INR)
@@ -237,6 +250,8 @@ export class OpenAIService {
       "profitMargin": number (as percentage),
       "yoyGrowth": number (as percentage),
       "ebitda": number (in billions USD),
+      "pat": number (in billions USD, same as netIncome but search for both),
+      "salesVolume": number (in millions of units),
       "debt": number (in billions USD),
       "rawMetrics": {"extracted_values": "any additional financial data found"}
     }

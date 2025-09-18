@@ -53,11 +53,13 @@ export class MarketDataService {
     // Convert to lowercase for easier matching
     const text = searchResults.toLowerCase();
     
-    // Extract sector/industry
+    // Extract sector/industry - Enhanced patterns
     const sectorPatterns = [
       /sector[:\s]+([^,\n.]+)/i,
       /industry[:\s]+([^,\n.]+)/i,
-      /(automotive|technology|healthcare|financial|energy|consumer|industrial|materials|utilities|telecommunications|real estate)/i
+      /(automotive|technology|healthcare|financial|energy|consumer|industrial|materials|utilities|telecommunications|real estate|technology & services)/i,
+      /sector:\s*([^,\n.]+)/i,
+      /industry:\s*([^,\n.]+)/i
     ];
     
     for (const pattern of sectorPatterns) {
@@ -68,11 +70,13 @@ export class MarketDataService {
       }
     }
     
-    // Extract current price (support both USD $ and Indian ₹)
+    // Extract current price (support both USD $ and Indian ₹) - Enhanced patterns
     const pricePatterns = [
       /(?:current price|stock price|share price)[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
       /trading at[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
-      /price[:\s]*[₹\$]?([\d,]+\.?\d*)/i
+      /price[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
+      /[₹\$]([\d,]+\.?\d*)/g,  // More general pattern for any price with currency symbol
+      /(?:^|\s)([\d,]+\.?\d*)\s*(?:\(\$[\d,]+\.?\d*\))?/g // Pattern with USD conversion in parentheses
     ];
     
     for (const pattern of pricePatterns) {
