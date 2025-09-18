@@ -68,11 +68,11 @@ export class MarketDataService {
       }
     }
     
-    // Extract current price
+    // Extract current price (support both USD $ and Indian ₹)
     const pricePatterns = [
-      /(?:current price|stock price|share price)[:\s]*\$?([\d,]+\.?\d*)/i,
-      /trading at[:\s]*\$?([\d,]+\.?\d*)/i,
-      /price[:\s]*\$?([\d,]+\.?\d*)/i
+      /(?:current price|stock price|share price)[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
+      /trading at[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
+      /price[:\s]*[₹\$]?([\d,]+\.?\d*)/i
     ];
     
     for (const pattern of pricePatterns) {
@@ -83,23 +83,24 @@ export class MarketDataService {
       }
     }
     
-    // Extract 52-week high/low
-    const weekHighMatch = text.match(/(?:52.?week high|52w high)[:\s]*\$?([\d,]+\.?\d*)/i);
+    // Extract 52-week high/low (support both USD $ and Indian ₹)
+    const weekHighMatch = text.match(/(?:52.?week high|52w high)[:\s]*[₹\$]?([\d,]+\.?\d*)/i);
     if (weekHighMatch) {
       results.weekHigh52 = this.parseNumericValue(weekHighMatch[1]);
     }
     
-    const weekLowMatch = text.match(/(?:52.?week low|52w low)[:\s]*\$?([\d,]+\.?\d*)/i);
+    const weekLowMatch = text.match(/(?:52.?week low|52w low)[:\s]*[₹\$]?([\d,]+\.?\d*)/i);
     if (weekLowMatch) {
       results.weekLow52 = this.parseNumericValue(weekLowMatch[1]);
     }
     
-    // Extract market cap (convert to billions)
+    // Extract market cap (convert to billions, support Indian crores)
     const marketCapPatterns = [
-      /market cap[:\s]*\$?([\d,]+\.?\d*)\s*(billion|b)/i,
-      /market capitalization[:\s]*\$?([\d,]+\.?\d*)\s*(billion|b)/i,
-      /market cap[:\s]*\$?([\d,]+\.?\d*)\s*(million|m)/i, // Convert millions to billions
-      /market cap[:\s]*\$?([\d,]+\.?\d*)\s*(trillion|t)/i // Convert trillions to billions
+      /market cap[:\s]*[₹\$]?([\d,]+\.?\d*)\s*(billion|b)/i,
+      /market capitalization[:\s]*[₹\$]?([\d,]+\.?\d*)\s*(billion|b)/i,
+      /market cap[:\s]*[₹\$]?([\d,]+\.?\d*)\s*(million|m)/i, // Convert millions to billions
+      /market cap[:\s]*[₹\$]?([\d,]+\.?\d*)\s*(trillion|t)/i, // Convert trillions to billions
+      /market cap[:\s]*[₹\$]?([\d,]+\.?\d*)\s*(crores?|cr)/i // Indian crores
     ];
     
     for (const pattern of marketCapPatterns) {
@@ -114,6 +115,8 @@ export class MarketDataService {
           results.marketCap = value / 1000; // Convert millions to billions
         } else if (unit.startsWith('t')) {
           results.marketCap = value * 1000; // Convert trillions to billions
+        } else if (unit.startsWith('c')) {
+          results.marketCap = value / 100; // Convert crores to billions (1 crore = 10 million, so 100 crores = 1 billion)
         }
         break;
       }
@@ -125,10 +128,10 @@ export class MarketDataService {
       results.dividendYield = this.parseNumericValue(dividendYieldMatch[1]);
     }
     
-    // Extract EPS
+    // Extract EPS (support both USD $ and Indian ₹)
     const epsPatterns = [
-      /eps[:\s]*\$?([\d,]+\.?\d*)/i,
-      /earnings per share[:\s]*\$?([\d,]+\.?\d*)/i
+      /eps[:\s]*[₹\$]?([\d,]+\.?\d*)/i,
+      /earnings per share[:\s]*[₹\$]?([\d,]+\.?\d*)/i
     ];
     
     for (const pattern of epsPatterns) {
