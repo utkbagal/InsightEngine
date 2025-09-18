@@ -2,13 +2,14 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChartLine, FileText, Brain, BarChart3, Rocket, Upload, Zap, Download, Mail, User, LogIn, UserPlus, LogOut } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import type { User as UserType } from "@shared/schema";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { user, isLoading, loginMutation, logoutMutation } = useAuth();
+  const isAuthenticated = !!user;
   const { toast } = useToast();
 
   const handleStartComparison = () => {
@@ -19,7 +20,7 @@ export default function LandingPage() {
         variant: "default",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        setLocation("/auth");
       }, 1000);
       return;
     }
@@ -27,11 +28,11 @@ export default function LandingPage() {
   };
 
   const handleSignIn = () => {
-    window.location.href = "/api/login";
+    setLocation("/auth");
   };
 
   const handleSignOut = () => {
-    window.location.href = "/api/logout";
+    logoutMutation.mutate();
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -81,6 +82,11 @@ export default function LandingPage() {
                       {user?.firstName && (
                         <span className="text-sm text-muted-foreground">
                           Hi, {user.firstName}
+                        </span>
+                      )}
+                      {!user?.firstName && (
+                        <span className="text-sm text-muted-foreground">
+                          Hi, {user?.username}
                         </span>
                       )}
                       <Button 

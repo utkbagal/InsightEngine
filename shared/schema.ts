@@ -15,14 +15,15 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// User storage table for basic username/password authentication
+// Blueprint: javascript_auth_all_persistance
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  username: varchar("username").unique().notNull(),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -154,9 +155,16 @@ export const insertComparisonSchema = createInsertSchema(comparisons).omit({
   createdAt: true,
 });
 
-// User types for Replit Auth
+// User types for basic authentication (blueprint: javascript_auth_all_persistance)
 export type User = typeof users.$inferSelect;
-export type UpsertUser = typeof users.$inferInsert;
+export type InsertUser = typeof users.$inferInsert;
+
+// User insert schema for registration
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 export type Company = typeof companies.$inferSelect;
 export type Document = typeof documents.$inferSelect;

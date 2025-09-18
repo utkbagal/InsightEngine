@@ -1,4 +1,7 @@
-import { type Company, type Document, type FinancialMetrics, type Comparison, type User, type UpsertUser, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison, companies, documents, financialMetrics, comparisons, users } from "@shared/schema";
+import { type Company, type Document, type FinancialMetrics, type Comparison, type User, type InsertUser, type InsertCompany, type InsertDocument, type InsertFinancialMetrics, type InsertComparison, companies, documents, financialMetrics, comparisons, users } from "@shared/schema";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -10,9 +13,11 @@ neonConfig.fetchConnectionCache = true;
 neonConfig.webSocketConstructor = ws;
 
 export interface IStorage {
-  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  // User operations for basic authentication (blueprint: javascript_auth_all_persistance)
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  sessionStore: session.SessionStore;
   
   // Companies
   createCompany(company: InsertCompany & { normalizedName: string }): Promise<Company>;
@@ -42,23 +47,37 @@ export class MemStorage implements IStorage {
   private financialMetrics: Map<string, FinancialMetrics> = new Map();
   private comparisons: Map<string, Comparison> = new Map();
 
-  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  // User operations for basic authentication (blueprint: javascript_auth_all_persistance)
+  sessionStore: session.SessionStore;
+
+  constructor() {
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000,
+    });
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const existingUser = this.users.get(userData.id!);
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    const id = randomUUID();
     const user: User = {
-      id: userData.id!,
-      email: userData.email ?? null,
+      id,
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
       firstName: userData.firstName ?? null,
       lastName: userData.lastName ?? null,
-      profileImageUrl: userData.profileImageUrl ?? null,
-      createdAt: existingUser?.createdAt || new Date(),
+      createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.users.set(userData.id!, user);
+    this.users.set(id, user);
     return user;
   }
 
@@ -208,6 +227,7 @@ export class MemStorage implements IStorage {
 
 class DatabaseStorage implements IStorage {
   private db;
+  sessionStore: session.SessionStore;
 
   constructor() {
     if (!process.env.DATABASE_URL) {
@@ -216,25 +236,30 @@ class DatabaseStorage implements IStorage {
     
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     this.db = drizzle(pool);
+    
+    // Setup session store for basic authentication (blueprint: javascript_auth_all_persistance)
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
   }
 
-  // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
+  // User operations for basic authentication (blueprint: javascript_auth_all_persistance)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await this.db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
     const [user] = await this.db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
       .returning();
     return user;
   }
