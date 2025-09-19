@@ -17,7 +17,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
   
   // Companies
   createCompany(company: InsertCompany & { normalizedName: string }): Promise<Company>;
@@ -48,7 +48,7 @@ export class MemStorage implements IStorage {
   private comparisons: Map<string, Comparison> = new Map();
 
   // User operations for basic authentication (blueprint: javascript_auth_all_persistance)
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     const MemoryStore = createMemoryStore(session);
@@ -227,7 +227,7 @@ export class MemStorage implements IStorage {
 
 class DatabaseStorage implements IStorage {
   private db;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     if (!process.env.DATABASE_URL) {
@@ -366,5 +366,5 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Use DatabaseStorage for persistent data storage
-export const storage = new DatabaseStorage();
+// Use MemStorage for in-memory data storage
+export const storage = new MemStorage();
