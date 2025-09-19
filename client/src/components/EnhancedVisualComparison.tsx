@@ -83,6 +83,9 @@ interface MetricData {
   pbRatio?: number | null;
   marketCap?: number | null;
   
+  // Revenue streams/segments
+  revenueStreams?: Record<string, number> | null;
+  
   // Legacy and other fields
   debt?: number | null;
   enrichedFields?: any;
@@ -319,73 +322,80 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
   );
 
   const renderPieChart = () => {
-    // Create revenue streams data for all companies
-    const allStreamsData: Array<{name: string, value: number, color: string, company: string}> = [];
-    
-    chartData.forEach((company, companyIndex) => {
-      if (company.revenueStreams && typeof company.revenueStreams === 'object') {
-        // If company has revenue streams data, use segment breakdown
-        Object.entries(company.revenueStreams).forEach(([streamName, streamValue], streamIndex) => {
-          if (streamValue && streamValue > 0) {
-            allStreamsData.push({
-              name: `${company.name}: ${streamName}`,
-              value: streamValue,
-              color: COLORS[(companyIndex * 3 + streamIndex) % COLORS.length],
-              company: company.fullName
-            });
-          }
-        });
-      } else {
-        // Fallback to total revenue if no streams data
-        if (company.revenue && company.revenue > 0) {
-          allStreamsData.push({
-            name: `${company.name}: Total Revenue`,
-            value: company.revenue,
-            color: COLORS[companyIndex % COLORS.length],
-            company: company.fullName
-          });
-        }
-      }
-    });
-
-    if (allStreamsData.length === 0) {
-      return (
-        <div className="h-80 flex items-center justify-center text-gray-500">
-          <p>No revenue stream data available for visualization</p>
-        </div>
-      );
-    }
-
+    // Create separate pie charts for each company showing their revenue streams
     return (
       <motion.div
         initial={{ opacity: 0, rotate: -10 }}
         animate={{ opacity: 1, rotate: 0 }}
         transition={{ duration: 0.6 }}
-        className="h-80"
+        className="space-y-6"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={allStreamsData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {allStreamsData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip 
-              formatter={(value: number) => formatCurrency(value)} 
-              labelFormatter={(label) => label}
-            />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+        {chartData.map((company, companyIndex) => {
+          // Prepare data for this company's revenue streams
+          const companyStreamsData: Array<{name: string, value: number, color: string}> = [];
+          
+          if (company.revenueStreams && typeof company.revenueStreams === 'object' && Object.keys(company.revenueStreams).length > 0) {
+            // Use revenue streams if available
+            Object.entries(company.revenueStreams).forEach(([streamName, streamValue], streamIndex) => {
+              if (typeof streamValue === 'number' && streamValue > 0) {
+                companyStreamsData.push({
+                  name: streamName,
+                  value: streamValue,
+                  color: COLORS[(streamIndex) % COLORS.length]
+                });
+              }
+            });
+          } else {
+            // Fallback to total revenue if no streams data
+            if (company.revenue && company.revenue > 0) {
+              companyStreamsData.push({
+                name: 'Total Revenue',
+                value: company.revenue,
+                color: COLORS[companyIndex % COLORS.length]
+              });
+            }
+          }
+
+          if (companyStreamsData.length === 0) {
+            return (
+              <div key={companyIndex} className="text-center p-4 border rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">{company.fullName}</h3>
+                <p className="text-gray-500">No revenue data available</p>
+              </div>
+            );
+          }
+
+          return (
+            <div key={companyIndex} className="border rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-center mb-4">{company.fullName} - Revenue Breakdown</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={companyStreamsData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {companyStreamsData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)} 
+                      labelFormatter={(label) => label}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          );
+        })}
       </motion.div>
     );
   };
