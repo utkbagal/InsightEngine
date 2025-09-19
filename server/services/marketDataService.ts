@@ -81,21 +81,21 @@ export class MarketDataService {
     
     for (const pattern of pricePatterns) {
       const match = text.match(pattern);
-      if (match) {
-        results.currentPrice = this.parseNumericValue(match[1]);
+      if (match && match[1]) {
+        results.currentPrice = this.parseNumericValue(match[1], `currentPrice for ${companyName}`);
         break;
       }
     }
     
     // Extract 52-week high/low (support both USD $ and Indian ₹)
     const weekHighMatch = text.match(/(?:52.?week high|52w high)[:\s]*[₹\$]?([\d,]+\.?\d*)/i);
-    if (weekHighMatch) {
-      results.weekHigh52 = this.parseNumericValue(weekHighMatch[1]);
+    if (weekHighMatch && weekHighMatch[1]) {
+      results.weekHigh52 = this.parseNumericValue(weekHighMatch[1], `52WeekHigh for ${companyName}`);
     }
     
     const weekLowMatch = text.match(/(?:52.?week low|52w low)[:\s]*[₹\$]?([\d,]+\.?\d*)/i);
-    if (weekLowMatch) {
-      results.weekLow52 = this.parseNumericValue(weekLowMatch[1]);
+    if (weekLowMatch && weekLowMatch[1]) {
+      results.weekLow52 = this.parseNumericValue(weekLowMatch[1], `52WeekLow for ${companyName}`);
     }
     
     // Extract market cap (convert to billions, support Indian crores)
@@ -109,8 +109,8 @@ export class MarketDataService {
     
     for (const pattern of marketCapPatterns) {
       const match = text.match(pattern);
-      if (match) {
-        const value = this.parseNumericValue(match[1]);
+      if (match && match[1] && match[2]) {
+        const value = this.parseNumericValue(match[1], `marketCap for ${companyName}`);
         const unit = match[2].toLowerCase();
         
         if (unit.startsWith('b')) {
@@ -128,8 +128,8 @@ export class MarketDataService {
     
     // Extract dividend yield
     const dividendYieldMatch = text.match(/dividend yield[:\s]*([\d,]+\.?\d*)%?/i);
-    if (dividendYieldMatch) {
-      results.dividendYield = this.parseNumericValue(dividendYieldMatch[1]);
+    if (dividendYieldMatch && dividendYieldMatch[1]) {
+      results.dividendYield = this.parseNumericValue(dividendYieldMatch[1], `dividendYield for ${companyName}`);
     }
     
     // Extract EPS (support both USD $ and Indian ₹)
@@ -140,8 +140,8 @@ export class MarketDataService {
     
     for (const pattern of epsPatterns) {
       const match = text.match(pattern);
-      if (match) {
-        results.eps = this.parseNumericValue(match[1]);
+      if (match && match[1]) {
+        results.eps = this.parseNumericValue(match[1], `EPS for ${companyName}`);
         break;
       }
     }
@@ -155,8 +155,8 @@ export class MarketDataService {
     
     for (const pattern of peRatioPatterns) {
       const match = text.match(pattern);
-      if (match) {
-        results.peRatio = this.parseNumericValue(match[1]);
+      if (match && match[1]) {
+        results.peRatio = this.parseNumericValue(match[1], `PE ratio for ${companyName}`);
         break;
       }
     }
@@ -179,11 +179,23 @@ export class MarketDataService {
   /**
    * Parse numeric values, removing commas and converting to number
    */
-  private parseNumericValue(value: string): number {
+  private parseNumericValue(value: string | undefined, context?: string): number {
     if (!value || typeof value !== 'string') {
+      console.log(`parseNumericValue: Invalid value ${value} (type: ${typeof value}) in context: ${context || 'unknown'}`);
       return 0;
     }
-    return parseFloat(value.replace(/,/g, ''));
+    try {
+      const cleanValue = value.replace(/,/g, '');
+      const result = parseFloat(cleanValue);
+      if (isNaN(result)) {
+        console.log(`parseNumericValue: NaN result for value '${value}' (cleaned: '${cleanValue}') in context: ${context || 'unknown'}`);
+        return 0;
+      }
+      return result;
+    } catch (error) {
+      console.log(`parseNumericValue: Error parsing '${value}' in context: ${context || 'unknown'}:`, error);
+      return 0;
+    }
   }
 
   /**
