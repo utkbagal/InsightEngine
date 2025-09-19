@@ -66,6 +66,9 @@ export const financialMetrics = pgTable("financial_metrics", {
   salesVolume: real("sales_volume"), // Number of units sold (in millions)
   salesUnits: real("sales_units"), // Alternative field for units sold
   
+  // Revenue Breakdown by Segments/Streams
+  revenueStreams: jsonb("revenue_streams"), // JSON object with segment-wise revenue breakdown
+  
   // Balance Sheet Metrics (in billions USD)
   totalAssets: real("total_assets"),
   currentAssets: real("current_assets"),

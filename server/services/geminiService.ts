@@ -210,6 +210,14 @@ export class GeminiService {
     - "Total vehicles sold", "Production volume", "Quantity sold"
     - Usually found in operating metrics or key performance indicators
     
+    **REVENUE SEGMENTS/STREAMS** (extract business segment revenue breakdown):
+    - Look for segment-wise revenue tables or business unit performance sections
+    - Geographic segments: "India operations", "International", "Domestic", "Export", regional breakdowns
+    - Product segments: "Passenger vehicles", "Commercial vehicles", "Two-wheelers", "Tractors", "SUVs", "Farm equipment"
+    - Service segments: "Financial services", "After-sales services", "Parts & accessories", "Software services"
+    - Business divisions: "Automotive", "Technology", "Cloud services", "Consumer products", "Healthcare"
+    - For specific companies: JLR revenue for Tata Motors, Farm Equipment for M&M, iPhone/Mac/Services for Apple, AWS/Retail for Amazon
+    
     **CRITICAL EXTRACTION RULES FOR INDIAN FINANCIAL DOCUMENTS**:
     1. **Currency Conversion**: For INR values, convert to USD using rate 1 USD = 83 INR
     2. **Scale Conversion**: 
@@ -268,6 +276,10 @@ export class GeminiService {
       "sharesOutstanding": number (in millions of shares),
       "profitMargin": number (as percentage),
       "yoyGrowth": number (as percentage),
+      "revenueStreams": {
+        "segment_name_1": number (revenue in billions USD),
+        "segment_name_2": number (revenue in billions USD)
+      },
       "confidence": {
         "revenue": number (0-1),
         "netIncome": number (0-1),

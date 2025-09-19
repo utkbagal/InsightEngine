@@ -319,11 +319,42 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
   );
 
   const renderPieChart = () => {
-    const pieData = chartData.map((item, index) => ({
-      name: item.fullName,
-      value: item.revenue,
-      color: item.color,
-    }));
+    // Create revenue streams data for all companies
+    const allStreamsData: Array<{name: string, value: number, color: string, company: string}> = [];
+    
+    chartData.forEach((company, companyIndex) => {
+      if (company.revenueStreams && typeof company.revenueStreams === 'object') {
+        // If company has revenue streams data, use segment breakdown
+        Object.entries(company.revenueStreams).forEach(([streamName, streamValue], streamIndex) => {
+          if (streamValue && streamValue > 0) {
+            allStreamsData.push({
+              name: `${company.name}: ${streamName}`,
+              value: streamValue,
+              color: COLORS[(companyIndex * 3 + streamIndex) % COLORS.length],
+              company: company.fullName
+            });
+          }
+        });
+      } else {
+        // Fallback to total revenue if no streams data
+        if (company.revenue && company.revenue > 0) {
+          allStreamsData.push({
+            name: `${company.name}: Total Revenue`,
+            value: company.revenue,
+            color: COLORS[companyIndex % COLORS.length],
+            company: company.fullName
+          });
+        }
+      }
+    });
+
+    if (allStreamsData.length === 0) {
+      return (
+        <div className="h-80 flex items-center justify-center text-gray-500">
+          <p>No revenue stream data available for visualization</p>
+        </div>
+      );
+    }
 
     return (
       <motion.div
@@ -335,7 +366,7 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={pieData}
+              data={allStreamsData}
               cx="50%"
               cy="50%"
               labelLine={false}
@@ -344,11 +375,14 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
               fill="#8884d8"
               dataKey="value"
             >
-              {pieData.map((entry, index) => (
+              {allStreamsData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip formatter={(value: number) => formatCurrency(value)} />
+            <Tooltip 
+              formatter={(value: number) => formatCurrency(value)} 
+              labelFormatter={(label) => label}
+            />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

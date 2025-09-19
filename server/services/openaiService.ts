@@ -21,6 +21,7 @@ export interface ExtractedMetrics {
   yoyGrowth?: number | null;
   ebitda?: number | null;
   debt?: number | null;
+  revenueStreams?: Record<string, number> | null;
   rawMetrics: Record<string, any>;
 }
 
@@ -229,6 +230,14 @@ export class OpenAIService {
     - "Vehicles sold", "Products sold", "Total sales units"
     - May be in millions/thousands of units
     
+    **REVENUE SEGMENTS/STREAMS** (look for business segments or product lines):
+    - "Segment revenue", "Business unit revenue", "Product line revenue", "Division revenue"
+    - Geographic segments: "India operations", "International", "North America", "Europe", "Asia"
+    - Product segments: "Passenger vehicles", "Commercial vehicles", "Two-wheelers", "Tractors", "SUVs"
+    - Service segments: "Financial services", "Parts & accessories", "After-sales", "Software", "Services"
+    - Business units: "Automotive", "Farm equipment", "Technology", "Cloud services", "Consumer products"
+    - JLR (Jaguar Land Rover) for Tata Motors, Farm Equipment for M&M, iPhone/Mac/Services for Apple, AWS/Retail for Amazon
+    
     **IMPORTANT INSTRUCTIONS**:
     1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
     2. Look for currency indicators (₹, Rs, INR for Indian Rupees - convert to USD using approximate rate 1 USD = 83 INR)
@@ -253,6 +262,11 @@ export class OpenAIService {
       "pat": number (in billions USD, same as netIncome but search for both),
       "salesVolume": number (in millions of units),
       "debt": number (in billions USD),
+      "revenueStreams": {
+        "segment_name_1": number (revenue in billions USD),
+        "segment_name_2": number (revenue in billions USD),
+        "segment_name_3": number (revenue in billions USD)
+      },
       "rawMetrics": {"extracted_values": "any additional financial data found"}
     }
     

@@ -1,6 +1,6 @@
 # 10075-2000110656 Financial Document Comparison Platform - Complete Feature Documentation
 
-## Credentials for App demo: admin/pass1
+## Credentials for App demo: admin/pass1 [quick sign up works as well]
 
 ## 🚀 Key Highlights & Features
 
