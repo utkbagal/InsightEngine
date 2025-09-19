@@ -108,14 +108,19 @@ export class GeminiService {
    * Sanitize error messages for client consumption
    */
   private generateFallbackRevenueStreams(companyName: string, totalRevenue?: number | null): Record<string, number> {
+    console.log(`Generating fallback for ${companyName} with revenue: ${totalRevenue}`);
+    
     if (!totalRevenue || totalRevenue <= 0) {
+      console.log(`No valid revenue for ${companyName}, returning empty object`);
       return {};
     }
 
     // If no segments found in document, show just total revenue
-    return {
+    const fallback = {
       "Total Revenue": totalRevenue
     };
+    console.log(`Generated fallback for ${companyName}:`, fallback);
+    return fallback;
   }
 
   private sanitizeErrorMessage(error: Error, context: string): string {
@@ -366,7 +371,14 @@ export class GeminiService {
       const validatedRatios = RatioCalculator.validateRatios(calculatedRatios);
       
       // Step 3: Add fallback revenue streams if none extracted
+      console.log(`Checking revenue streams for ${validatedCompanyName}:`, {
+        hasRevenueStreams: !!aiResult.revenueStreams,
+        keysCount: aiResult.revenueStreams ? Object.keys(aiResult.revenueStreams).length : 0,
+        revenue: aiResult.revenue
+      });
+      
       if (!aiResult.revenueStreams || Object.keys(aiResult.revenueStreams).length === 0) {
+        console.log(`Generating fallback revenue streams for ${validatedCompanyName}`);
         aiResult.revenueStreams = this.generateFallbackRevenueStreams(validatedCompanyName, aiResult.revenue);
       }
 

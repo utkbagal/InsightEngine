@@ -145,7 +145,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -280,7 +280,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -366,7 +366,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -444,7 +444,7 @@ export class OpenAIService {
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
