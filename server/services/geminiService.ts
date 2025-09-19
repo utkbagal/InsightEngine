@@ -112,38 +112,10 @@ export class GeminiService {
       return {};
     }
 
-    const lowerCompanyName = companyName.toLowerCase();
-    
-    // Create logical revenue segments based on known business structure
-    if (lowerCompanyName.includes('tata') || lowerCompanyName.includes('tatamotors')) {
-      return {
-        "JLR (Jaguar Land Rover)": totalRevenue * 0.45,
-        "India Business": totalRevenue * 0.35,
-        "Commercial Vehicles": totalRevenue * 0.15,
-        "Others": totalRevenue * 0.05
-      };
-    } else if (lowerCompanyName.includes('m&m') || lowerCompanyName.includes('mahindra')) {
-      return {
-        "Farm Equipment": totalRevenue * 0.55,
-        "Auto & Auto Components": totalRevenue * 0.35,
-        "Financial Services": totalRevenue * 0.10
-      };
-    } else if (lowerCompanyName.includes('apple')) {
-      return {
-        "iPhone": totalRevenue * 0.50,
-        "Mac": totalRevenue * 0.15,
-        "Services": totalRevenue * 0.20,
-        "iPad": totalRevenue * 0.10,
-        "Other Products": totalRevenue * 0.05
-      };
-    } else {
-      // Generic automotive/technology company fallback
-      return {
-        "Core Business": totalRevenue * 0.70,
-        "Services": totalRevenue * 0.20,
-        "International": totalRevenue * 0.10
-      };
-    }
+    // If no segments found in document, show just total revenue
+    return {
+      "Total Revenue": totalRevenue
+    };
   }
 
   private sanitizeErrorMessage(error: Error, context: string): string {
@@ -259,7 +231,7 @@ export class GeminiService {
     - For M&M: Look specifically for "Farm Equipment", "Auto & Auto Components", "Financial Services", "Auto Sector", "Farm Sector"
     - SEARCH IN TABLES: Look for tables with columns showing different business segments and their revenues
     - If found, extract the revenue amount for each segment and convert to billions USD
-    - MANDATORY: If no clear segment breakdowns are found in tables or text, populate with sample segments based on known business structure
+    - IMPORTANT: Only extract segments if clearly found in document tables or text. If no segments found, leave revenueStreams empty
     
     **CRITICAL EXTRACTION RULES FOR INDIAN FINANCIAL DOCUMENTS**:
     1. **Currency Conversion**: For INR values, convert to USD using rate 1 USD = 83 INR

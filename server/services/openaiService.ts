@@ -240,7 +240,7 @@ export class OpenAIService {
     - For M&M: Priority search for "Farm Equipment", "Auto & Auto Components", "Financial Services", "Auto Sector", "Farm Sector"
     - Look in section headers, table headers, and financial performance breakdowns
     - If segments found, extract individual segment revenues and convert to billions USD
-    - FALLBACK: If no segments found, create logical segments based on total revenue (e.g., 70% Automotive, 30% Other for automotive companies)
+    - IMPORTANT: Only extract segments if clearly found in document tables or text. If no segments found, leave revenueStreams empty
     
     **IMPORTANT INSTRUCTIONS**:
     1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
