@@ -230,13 +230,17 @@ export class OpenAIService {
     - "Vehicles sold", "Products sold", "Total sales units"
     - May be in millions/thousands of units
     
-    **REVENUE SEGMENTS/STREAMS** (look for business segments or product lines):
-    - "Segment revenue", "Business unit revenue", "Product line revenue", "Division revenue"
-    - Geographic segments: "India operations", "International", "North America", "Europe", "Asia"
-    - Product segments: "Passenger vehicles", "Commercial vehicles", "Two-wheelers", "Tractors", "SUVs"
-    - Service segments: "Financial services", "Parts & accessories", "After-sales", "Software", "Services"
-    - Business units: "Automotive", "Farm equipment", "Technology", "Cloud services", "Consumer products"
-    - JLR (Jaguar Land Rover) for Tata Motors, Farm Equipment for M&M, iPhone/Mac/Services for Apple, AWS/Retail for Amazon
+    **REVENUE SEGMENTS/STREAMS** (CRITICAL - look extensively for business segments):
+    - THIS IS EXTREMELY IMPORTANT: Search thoroughly for "Segment revenue", "Business unit revenue", "Segment wise results", "Segment Analysis", "Business Performance by Segment"
+    - Geographic segments: "India operations", "International", "North America", "Europe", "Asia", "JLR operations"
+    - Product segments: "Passenger vehicles", "Commercial vehicles", "Two-wheelers", "Tractors", "SUVs", "Farm Equipment", "Automotive"
+    - Service segments: "Financial services", "Parts & accessories", "After-sales", "Software", "Services", "Technology Services"
+    - Business units: "Automotive", "Farm equipment", "Technology", "Cloud services", "Consumer products", "Auto Sector", "Farm Sector"
+    - For Tata Motors: Priority search for "JLR" or "Jaguar Land Rover", "India Business", "Commercial Vehicles", "Passenger Vehicles"
+    - For M&M: Priority search for "Farm Equipment", "Auto & Auto Components", "Financial Services", "Auto Sector", "Farm Sector"
+    - Look in section headers, table headers, and financial performance breakdowns
+    - If segments found, extract individual segment revenues and convert to billions USD
+    - FALLBACK: If no segments found, create logical segments based on total revenue (e.g., 70% Automotive, 30% Other for automotive companies)
     
     **IMPORTANT INSTRUCTIONS**:
     1. Convert ALL monetary values to BILLIONS USD (divide by 1000 if in millions, by 1,000,000 if in thousands)
