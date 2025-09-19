@@ -323,6 +323,12 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
 
   const renderPieChart = () => {
     // Create separate pie charts for each company showing their revenue streams
+    console.log('Rendering pie charts with data:', chartData.map(c => ({
+      name: c.companyName,
+      revenueStreams: c.revenueStreams,
+      revenue: c.revenue
+    })));
+    
     return (
       <motion.div
         initial={{ opacity: 0, rotate: -10 }}
@@ -334,8 +340,16 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
           // Prepare data for this company's revenue streams
           const companyStreamsData: Array<{name: string, value: number, color: string}> = [];
           
+          console.log(`Processing ${company.companyName}:`, {
+            hasRevenueStreams: !!company.revenueStreams,
+            revenueStreamsType: typeof company.revenueStreams,
+            revenueStreamsKeys: company.revenueStreams ? Object.keys(company.revenueStreams) : [],
+            revenue: company.revenue
+          });
+          
           if (company.revenueStreams && typeof company.revenueStreams === 'object' && Object.keys(company.revenueStreams).length > 0) {
             // Use revenue streams if available
+            console.log(`Using revenue streams for ${company.companyName}:`, company.revenueStreams);
             Object.entries(company.revenueStreams).forEach(([streamName, streamValue], streamIndex) => {
               if (typeof streamValue === 'number' && streamValue > 0) {
                 companyStreamsData.push({
@@ -347,6 +361,7 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
             });
           } else {
             // Fallback to total revenue if no streams data
+            console.log(`Using fallback total revenue for ${company.companyName}: ${company.revenue}`);
             if (company.revenue && company.revenue > 0) {
               companyStreamsData.push({
                 name: 'Total Revenue',
@@ -355,6 +370,8 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
               });
             }
           }
+          
+          console.log(`Final streams data for ${company.companyName}:`, companyStreamsData);
 
           if (companyStreamsData.length === 0) {
             return (
