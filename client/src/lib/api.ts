@@ -36,6 +36,7 @@ export interface FinancialMetrics {
   salesVolume?: number;
   salesUnits?: number;
   debt?: number;
+  revenueStreams?: Record<string, number>;
   rawMetrics: Record<string, any>;
   extractedAt: string;
   
