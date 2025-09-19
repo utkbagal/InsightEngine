@@ -115,7 +115,7 @@ const MEDIUM_COLORS = [
 ];
 
 export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComparisonProps) {
-  const [activeChart, setActiveChart] = useState<ChartType>('bar');
+  const [activeChart, setActiveChart] = useState<ChartType>('pie');
 
   // Format data for different chart types - preserve null values and include all financial ratios
   const formatDataForCharts = () => {
@@ -178,9 +178,9 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
   const radarData = formatDataForRadar();
 
   const chartTypes: { type: ChartType; label: string; icon: any }[] = [
+    { type: 'pie', label: 'Revenue Split', icon: PieChartIcon },
     { type: 'bar', label: 'Bar Chart', icon: BarChart3 },
     { type: 'line', label: 'Growth Trends', icon: LineChartIcon },
-    { type: 'pie', label: 'Revenue Split', icon: PieChartIcon },
     { type: 'radar', label: 'Performance Radar', icon: RadarIcon },
     { type: 'metric-cards', label: 'Metric Cards', icon: Activity },
     { type: 'profitability', label: 'Profitability', icon: Target },
@@ -208,44 +208,61 @@ export default function EnhancedVisualComparison({ metrics }: EnhancedVisualComp
     return `$${value.toFixed(2)}`;
   };
 
-  const renderBarChart = () => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="h-80"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis dataKey="name" className="text-xs" />
-          <YAxis className="text-xs" />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: 'hsl(var(--background))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '6px',
-              fontSize: '12px'
-            }}
-            formatter={(value: number, name: string) => [
-              name === 'revenue' ? formatCurrency(value) : 
-              name === 'profitMargin' ? formatPercent(value) : value,
-              name === 'revenue' ? 'Revenue' : 
-              name === 'netIncome' ? 'Net Income' : 
-              name === 'profitMargin' ? 'Profit Margin' : name
-            ]}
-          />
-          <Legend />
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-            <Bar dataKey="revenue" fill="#8884d8" name="Revenue (Billions)" />
-          </motion.g>
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <Bar dataKey="netIncome" fill="#82ca9d" name="Net Income (Billions)" />
-          </motion.g>
-        </BarChart>
-      </ResponsiveContainer>
-    </motion.div>
-  );
+  const renderBarChart = () => {
+    // Filter out null/undefined values and ensure we have valid data
+    const validData = chartData.filter(item => 
+      (item.revenue !== null && item.revenue !== undefined && item.revenue > 0) ||
+      (item.netIncome !== null && item.netIncome !== undefined && item.netIncome > 0)
+    );
+
+    if (validData.length === 0) {
+      return (
+        <div className="h-80 flex items-center justify-center text-gray-500">
+          <p>No valid revenue or net income data available for comparison</p>
+        </div>
+      );
+    }
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="h-80"
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={validData}>
+            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+            <XAxis dataKey="name" className="text-xs" />
+            <YAxis className="text-xs" />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                fontSize: '12px'
+              }}
+              formatter={(value: number, name: string) => [
+                name === 'revenue' ? formatCurrency(value) : 
+                name === 'netIncome' ? formatCurrency(value) : 
+                name === 'profitMargin' ? formatPercent(value) : value,
+                name === 'revenue' ? 'Revenue' : 
+                name === 'netIncome' ? 'Net Income' : 
+                name === 'profitMargin' ? 'Profit Margin' : name
+              ]}
+            />
+            <Legend />
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+              <Bar dataKey="revenue" fill="#8884d8" name="Revenue (Billions)" />
+            </motion.g>
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+              <Bar dataKey="netIncome" fill="#82ca9d" name="Net Income (Billions)" />
+            </motion.g>
+          </BarChart>
+        </ResponsiveContainer>
+      </motion.div>
+    );
+  };
 
   const renderLineChart = () => (
     <motion.div
