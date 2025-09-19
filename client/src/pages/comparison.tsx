@@ -253,7 +253,7 @@ export default function ComparisonPage() {
                       <input
                         type="text"
                         placeholder={`e.g., ${index === 0 ? 'Apple Inc.' : index === 1 ? 'Microsoft Corp.' : index === 2 ? 'Google (Alphabet)' : 'Meta Platforms'}`}
-                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                         value={company.name}
                         onChange={(e) => handleCompanyNameChange(index, e.target.value)}
                         data-testid={`input-company-name-${index + 1}`}
