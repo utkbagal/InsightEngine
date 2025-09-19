@@ -89,8 +89,9 @@ export default function AuthPage() {
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl">Welcome</CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm text-[#0f1419] bg-[transparent]">
               Sign in to your account or create a new one to get started
+              (Credentials for demo: admin/pass123)
             </CardDescription>
           </CardHeader>
           <CardContent>

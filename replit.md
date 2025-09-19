@@ -1,5 +1,6 @@
 # 10075-2000110656 Financial Document Comparison Platform
 
+## Credentials for App demo: admin/pass1
 ## Overview
 
 This is a full-stack financial document analysis platform that enables instant, error-reduced side-by-side comparisons from company filings, KPIs, and optional web data. The system accepts company PDFs/HTML (10-K/10-Q), research notes, and CSV KPIs, then uses AI to extract and normalize financial metrics for comparative analysis.

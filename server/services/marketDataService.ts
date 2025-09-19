@@ -180,6 +180,9 @@ export class MarketDataService {
    * Parse numeric values, removing commas and converting to number
    */
   private parseNumericValue(value: string): number {
+    if (!value || typeof value !== 'string') {
+      return 0;
+    }
     return parseFloat(value.replace(/,/g, ''));
   }
 
