@@ -372,21 +372,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               let metrics;
               
               if (documentBuffers && documentBuffers.has(docId)) {
-                // Try direct document analysis first
+                // Try OpenAI first, then fallback to Gemini document analysis
                 const docData = documentBuffers.get(docId);
-                console.log(`Attempting direct document analysis for ${userEnteredName} with ${docData.mimeType}`);
+                console.log(`Attempting OpenAI text analysis first for ${userEnteredName}`);
                 
                 try {
-                  metrics = await geminiService.extractFinancialMetricsFromDocument(
-                    docData.buffer, 
-                    docData.mimeType, 
-                    userEnteredName
-                  );
-                  console.log(`Direct document analysis successful for ${userEnteredName}`);
-                } catch (docError) {
-                  console.error(`Direct document analysis failed for ${userEnteredName}:`, docError);
-                  console.log(`Falling back to text extraction for ${userEnteredName}`);
                   metrics = await openaiService.extractFinancialMetrics(doc.extractedText, userEnteredName);
+                  console.log(`OpenAI analysis successful for ${userEnteredName}`);
+                } catch (openaiError) {
+                  console.error(`OpenAI analysis failed for ${userEnteredName}:`, openaiError);
+                  console.log(`Falling back to Gemini document analysis for ${userEnteredName}`);
+                  
+                  try {
+                    metrics = await geminiService.extractFinancialMetricsFromDocument(
+                      docData.buffer, 
+                      docData.mimeType, 
+                      userEnteredName
+                    );
+                    console.log(`Gemini document analysis successful for ${userEnteredName}`);
+                  } catch (geminiError) {
+                    console.error(`Both OpenAI and Gemini failed for ${userEnteredName}`);
+                    throw geminiError;
+                  }
                 }
               } else {
                 // Fallback to text-based extraction
@@ -409,6 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 yoyGrowth: kpiNormalizer.normalizeMetricValue(metrics.yoyGrowth),
                 ebitda: kpiNormalizer.normalizeMetricValue(metrics.ebitda),
                 debt: kpiNormalizer.normalizeMetricValue(metrics.debt),
+                revenueStreams: metrics.revenueStreams || {},
                 rawMetrics: (metrics.rawMetrics as Record<string, any>) || {}
               };
 
